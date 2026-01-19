@@ -14,6 +14,8 @@ import { AnnotationToolbar } from "./editor/AnnotationToolbar";
 import { AnnotationCanvas } from "./editor/AnnotationCanvas";
 import { PropertiesPanel } from "./editor/PropertiesPanel";
 import { OCRResultsDialog } from "./editor/OCRResultsDialog";
+import { BackgroundSizePanel } from "./editor/BackgroundSizePanel";
+import { ImagePositionPanel } from "./editor/ImagePositionPanel";
 import { Annotation, ToolType } from "@/types/annotations";
 import { usePreviewGenerator } from "@/hooks/usePreviewGenerator";
 import { assetCategories } from "@/hooks/useEditorSettings";
@@ -503,6 +505,53 @@ export function ImageEditor({ imagePath, onSave, onCancel }: ImageEditorProps) {
                 onShadowOpacityChange={actions.setShadowOpacity}
               />
 
+              <BackgroundSizePanel
+                dimensions={settings.canvasDimensions}
+                screenshotWidth={screenshotImage?.width || 0}
+                screenshotHeight={screenshotImage?.height || 0}
+                padding={settings.padding}
+                imageScalingMode={settings.imageScalingMode}
+                imageBorderSize={settings.imageBorderSize}
+                onWidthChange={actions.setCanvasWidth}
+                onHeightChange={actions.setCanvasHeight}
+                onAspectRatioLockedChange={actions.setAspectRatioLocked}
+                onPresetSelect={(width, height) => {
+                  actions.setCanvasDimensions({ width, height });
+                  // Auto-select cover mode when a preset is selected
+                  if (settings.imageScalingMode === "none") {
+                    actions.setImageScalingMode("cover");
+                  }
+                }}
+                onScalingModeChange={actions.setImageScalingMode}
+                onBorderSizeChange={actions.setImageBorderSize}
+                onReset={() => {
+                  // Reset to auto dimensions and none scaling mode
+                  actions.setCanvasDimensions({ width: 0, height: 0 });
+                  actions.setImageScalingMode("none");
+                  actions.setImageOffset({ x: 0, y: 0 });
+                }}
+              />
+
+              <ImagePositionPanel
+                imageOffset={settings.imageOffset}
+                screenshotWidth={screenshotImage?.width || 0}
+                screenshotHeight={screenshotImage?.height || 0}
+                backgroundWidth={
+                  settings.canvasDimensions.width > 0
+                    ? settings.canvasDimensions.width
+                    : (screenshotImage?.width || 0) + settings.padding * 2
+                }
+                backgroundHeight={
+                  settings.canvasDimensions.height > 0
+                    ? settings.canvasDimensions.height
+                    : (screenshotImage?.height || 0) + settings.padding * 2
+                }
+                imageScalingMode={settings.imageScalingMode}
+                onOffsetXChange={actions.setImageOffsetX}
+                onOffsetYChange={actions.setImageOffsetY}
+                onReset={() => actions.setImageOffset({ x: 0, y: 0 })}
+              />
+
               <ImageRoundnessControl
                 borderRadius={settings.borderRadius}
                 onBorderRadiusChangeTransient={actions.setBorderRadiusTransient}
@@ -534,6 +583,19 @@ export function ImageEditor({ imagePath, onSave, onCancel }: ImageEditorProps) {
                 selectedTool={selectedTool}
                 previewUrl={previewUrl}
                 showTransparencyGrid={settings.backgroundType === "transparent"}
+                imageOffset={settings.imageOffset}
+                canReposition={
+                  !!(screenshotImage &&
+                  (screenshotImage.width > ((settings.canvasDimensions.width > 0 ? settings.canvasDimensions.width : screenshotImage.width + settings.padding * 2)) ||
+                   screenshotImage.height > ((settings.canvasDimensions.height > 0 ? settings.canvasDimensions.height : screenshotImage.height + settings.padding * 2))))
+                }
+                onImageOffsetUpdateTransient={(offset) => {
+                  actions.setImageOffsetXTransient(offset.x);
+                  actions.setImageOffsetYTransient(offset.y);
+                }}
+                onImageOffsetUpdate={(offset) => {
+                  actions.setImageOffset(offset);
+                }}
                 onAnnotationAdd={handleAnnotationAdd}
                 onAnnotationUpdateTransient={handleAnnotationUpdateTransient}
                 onAnnotationUpdate={handleAnnotationUpdate}

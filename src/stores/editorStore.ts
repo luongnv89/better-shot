@@ -11,12 +11,24 @@ import { Annotation } from "@/types/annotations";
 // ============================================================================
 
 export type BackgroundType = "transparent" | "white" | "black" | "gray" | "gradient" | "custom" | "image";
+export type ImageScalingMode = "none" | "fit" | "fit-with-border" | "cover" | "contain";
 
 export interface ShadowSettings {
   blur: number;
   offsetX: number;
   offsetY: number;
   opacity: number;
+}
+
+export interface CanvasDimensions {
+  width: number;
+  height: number;
+  aspectRatioLocked: boolean;
+}
+
+export interface ImageOffset {
+  x: number;
+  y: number;
 }
 
 export interface EditorSettings {
@@ -30,6 +42,10 @@ export interface EditorSettings {
   borderRadius: number;
   padding: number;
   shadow: ShadowSettings;
+  canvasDimensions: CanvasDimensions;
+  imageOffset: ImageOffset;
+  imageScalingMode: ImageScalingMode;
+  imageBorderSize: number;
 }
 
 // Snapshot for undo/redo - stores complete state
@@ -86,7 +102,31 @@ interface EditorActions {
   setShadowOffsetX: (offsetX: number) => void;
   setShadowOffsetY: (offsetY: number) => void;
   setShadowOpacity: (opacity: number) => void;
-  
+
+  // Canvas dimensions - transient (during input)
+  setCanvasWidthTransient: (width: number) => void;
+  setCanvasHeightTransient: (height: number) => void;
+  setAspectRatioLockedTransient: (locked: boolean) => void;
+
+  // Canvas dimensions - commit (on release)
+  setCanvasWidth: (width: number) => void;
+  setCanvasHeight: (height: number) => void;
+  setAspectRatioLocked: (locked: boolean) => void;
+  setCanvasDimensions: (dimensions: Partial<CanvasDimensions>) => void;
+
+  // Image offset - transient (during drag)
+  setImageOffsetXTransient: (offsetX: number) => void;
+  setImageOffsetYTransient: (offsetY: number) => void;
+
+  // Image offset - commit (on release)
+  setImageOffsetX: (offsetX: number) => void;
+  setImageOffsetY: (offsetY: number) => void;
+  setImageOffset: (offset: ImageOffset) => void;
+
+  // Image scaling - commit (on release)
+  setImageScalingMode: (mode: ImageScalingMode) => void;
+  setImageBorderSize: (size: number) => void;
+
   // Annotation actions
   addAnnotation: (annotation: Annotation) => void;
   updateAnnotationTransient: (annotation: Annotation) => void;
@@ -131,6 +171,17 @@ const DEFAULT_SETTINGS: EditorSettings = {
     offsetY: 23,
     opacity: 39,
   },
+  canvasDimensions: {
+    width: 0,
+    height: 0,
+    aspectRatioLocked: true,
+  },
+  imageOffset: {
+    x: 0,
+    y: 0,
+  },
+  imageScalingMode: "none",
+  imageBorderSize: 0,
 };
 
 const INITIAL_STATE: EditorState = {
@@ -279,6 +330,48 @@ export const useEditorStore = create<EditorStore>()(
         });
       },
 
+      setCanvasWidthTransient: (width) => {
+        set((state) => {
+          const dims = state.settings.canvasDimensions;
+          const oldWidth = dims.width;
+          dims.width = width;
+          if (dims.aspectRatioLocked && width > 0 && oldWidth > 0) {
+            const ratio = dims.height / oldWidth;
+            dims.height = Math.round(width * ratio);
+          }
+        });
+      },
+
+      setCanvasHeightTransient: (height) => {
+        set((state) => {
+          const dims = state.settings.canvasDimensions;
+          const oldHeight = dims.height;
+          dims.height = height;
+          if (dims.aspectRatioLocked && height > 0 && oldHeight > 0) {
+            const ratio = dims.width / oldHeight;
+            dims.width = Math.round(height * ratio);
+          }
+        });
+      },
+
+      setAspectRatioLockedTransient: (locked) => {
+        set((state) => {
+          state.settings.canvasDimensions.aspectRatioLocked = locked;
+        });
+      },
+
+      setImageOffsetXTransient: (offsetX) => {
+        set((state) => {
+          state.settings.imageOffset.x = offsetX;
+        });
+      },
+
+      setImageOffsetYTransient: (offsetY) => {
+        set((state) => {
+          state.settings.imageOffset.y = offsetY;
+        });
+      },
+
       // ========================================
       // Slider Settings - Commit (on release)
       // ========================================
@@ -324,6 +417,74 @@ export const useEditorStore = create<EditorStore>()(
           state.settings.shadow.opacity = opacity;
           state.future = [];
         });
+      },
+
+      setCanvasWidth: (width) => {
+        const currentDims = get().settings.canvasDimensions;
+        const newDims = { ...currentDims, width };
+        if (currentDims.aspectRatioLocked && width > 0 && currentDims.width > 0) {
+          const ratio = currentDims.height / currentDims.width;
+          newDims.height = Math.round(width * ratio);
+        }
+        get().updateSettings({ canvasDimensions: newDims });
+      },
+
+      setCanvasHeight: (height) => {
+        const currentDims = get().settings.canvasDimensions;
+        const newDims = { ...currentDims, height };
+        if (currentDims.aspectRatioLocked && height > 0 && currentDims.height > 0) {
+          const ratio = currentDims.width / currentDims.height;
+          newDims.width = Math.round(height * ratio);
+        }
+        get().updateSettings({ canvasDimensions: newDims });
+      },
+
+      setAspectRatioLocked: (locked) => {
+        get().updateSettings({
+          canvasDimensions: {
+            ...get().settings.canvasDimensions,
+            aspectRatioLocked: locked,
+          },
+        });
+      },
+
+      setCanvasDimensions: (dimensions) => {
+        get().updateSettings({
+          canvasDimensions: {
+            ...get().settings.canvasDimensions,
+            ...dimensions,
+          },
+        });
+      },
+
+      setImageOffsetX: (offsetX) => {
+        get().updateSettings({
+          imageOffset: {
+            ...get().settings.imageOffset,
+            x: offsetX,
+          },
+        });
+      },
+
+      setImageOffsetY: (offsetY) => {
+        get().updateSettings({
+          imageOffset: {
+            ...get().settings.imageOffset,
+            y: offsetY,
+          },
+        });
+      },
+
+      setImageOffset: (offset) => {
+        get().updateSettings({ imageOffset: offset });
+      },
+
+      setImageScalingMode: (mode) => {
+        get().updateSettings({ imageScalingMode: mode });
+      },
+
+      setImageBorderSize: (size) => {
+        get().updateSettings({ imageBorderSize: size });
       },
 
       // ========================================
@@ -464,6 +625,8 @@ export const usePadding = () => useEditorStore((state) => state.settings.padding
 export const useShadow = () => useEditorStore((state) => state.settings.shadow);
 export const useSelectedImageSrc = () => useEditorStore((state) => state.settings.selectedImageSrc);
 export const useGradientId = () => useEditorStore((state) => state.settings.gradientId);
+export const useCanvasDimensions = () => useEditorStore((state) => state.settings.canvasDimensions);
+export const useImageOffset = () => useEditorStore((state) => state.settings.imageOffset);
 
 // Annotation selectors
 export const useAnnotations = () => useEditorStore((state) => state.annotations);
@@ -495,6 +658,20 @@ export const editorActions = {
   get setShadowOffsetYTransient() { return useEditorStore.getState().setShadowOffsetYTransient; },
   get setShadowOpacity() { return useEditorStore.getState().setShadowOpacity; },
   get setShadowOpacityTransient() { return useEditorStore.getState().setShadowOpacityTransient; },
+  get setCanvasWidth() { return useEditorStore.getState().setCanvasWidth; },
+  get setCanvasWidthTransient() { return useEditorStore.getState().setCanvasWidthTransient; },
+  get setCanvasHeight() { return useEditorStore.getState().setCanvasHeight; },
+  get setCanvasHeightTransient() { return useEditorStore.getState().setCanvasHeightTransient; },
+  get setAspectRatioLocked() { return useEditorStore.getState().setAspectRatioLocked; },
+  get setAspectRatioLockedTransient() { return useEditorStore.getState().setAspectRatioLockedTransient; },
+  get setCanvasDimensions() { return useEditorStore.getState().setCanvasDimensions; },
+  get setImageOffsetX() { return useEditorStore.getState().setImageOffsetX; },
+  get setImageOffsetXTransient() { return useEditorStore.getState().setImageOffsetXTransient; },
+  get setImageOffsetY() { return useEditorStore.getState().setImageOffsetY; },
+  get setImageOffsetYTransient() { return useEditorStore.getState().setImageOffsetYTransient; },
+  get setImageOffset() { return useEditorStore.getState().setImageOffset; },
+  get setImageScalingMode() { return useEditorStore.getState().setImageScalingMode; },
+  get setImageBorderSize() { return useEditorStore.getState().setImageBorderSize; },
   get addAnnotation() { return useEditorStore.getState().addAnnotation; },
   get updateAnnotation() { return useEditorStore.getState().updateAnnotation; },
   get updateAnnotationTransient() { return useEditorStore.getState().updateAnnotationTransient; },
