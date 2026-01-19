@@ -19,10 +19,10 @@ Better Shot is a fast, lightweight screenshot tool built with Tauri + React. It 
     - [Capture Modes](#capture-modes)
     - [Image Editing](#image-editing)
     - [Annotation Tools](#annotation-tools)
-    - [OCR (Optical Character Recognition)](#ocr-optical-character-recognition)
     - [Workflow](#workflow)
   - [Install](#install)
     - [Download a release (recommended)](#download-a-release-recommended)
+    - [Homebrew (macOS)](#homebrew-macos)
     - [Build from source](#build-from-source)
       - [Requirements](#requirements)
       - [Required permissions](#required-permissions)
@@ -67,15 +67,6 @@ Clean screenshot workflows usually need three things: capture fast, polish fast 
 - **Editability**: Select, move, and delete annotations
 - **Styling**: Colors, opacity, borders, alignment
 
-### OCR (Optical Character Recognition)
-
-- **Text extraction**: Extract text from screenshots using OCR
-- **Full image processing**: Recognizes text from the entire edited image including annotations
-- **Copy to clipboard**: Easily copy extracted text for use elsewhere
-- **Automatic preprocessing**: Image enhancement (grayscale, contrast, brightness) for better accuracy
-- **Auto-rotation**: Automatically detects and corrects rotated text
-- **Offline support**: OCR works fully offline with bundled Tesseract.js and language data
-
 ### Workflow
 
 - **Global shortcuts**: Capture from anywhere, even when hidden
@@ -91,18 +82,21 @@ Clean screenshot workflows usually need three things: capture fast, polish fast 
 
 1. Go to [Releases](https://github.com/KartikLabhshetwar/better-shot/releases)
 2. Download the appropriate DMG file:
-   - **Apple Silicon** (M1/M2/M3): `bettershot_*_aarch64.dmg`
+   - **Apple Silicon** (M1/M2/M3/M4/M5): `bettershot_*_aarch64.dmg`
    - **Intel**: `bettershot_*_x64.dmg`
 3. Open the DMG and drag Better Shot to Applications
-4. First launch (recommended):
+4. Launch Better Shot from Applications
+5. Grant Screen Recording permission when prompted in System Settings
+
+### Homebrew (macOS)
+
+Install via Homebrew:
 
 ```bash
-xattr -d com.apple.quarantine /Applications/bettershot.app
+brew install --cask bettershot
 ```
 
-5. Grant Screen Recording permission when prompted
-
-> Note: Better Shot is ad-hoc signed. macOS Gatekeeper may warn for apps that aren’t notarized. You can inspect the source and build it yourself.
+**Requirements**: macOS >= 10.15
 
 ### Build from source
 
@@ -143,8 +137,7 @@ This permission is required for the app to capture screenshots of your screen.
    - Optional (enable in Preferences): `⌘⇧F` (fullscreen), `⌘⇧D` (window)
 3. Edit (background/effects/shadow/roundness)
 4. Annotate (shapes, arrows, text, numbered labels)
-5. Extract text: Use the "Extract Text" button to run OCR on your screenshot
-6. Export: `⌘S` to save, `⇧⌘C` to copy to clipboard
+5. Export: `⌘S` to save, `⇧⌘C` to copy to clipboard
 
 ### Auto-apply workflow
 

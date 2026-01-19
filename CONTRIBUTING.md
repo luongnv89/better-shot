@@ -37,6 +37,18 @@ Be respectful, constructive, and professional in all interactions. Focus on the 
    - Ensure you have Node.js 18+ and pnpm installed
    - On macOS, grant Screen Recording permission when prompted
 
+### Installing Better Shot for Testing
+
+If you want to test the production build, you can install Better Shot via Homebrew:
+
+```bash
+brew install --cask bettershot
+```
+
+**Requirements**: macOS >= 10.15
+
+Alternatively, download the latest release from [GitHub Releases](https://github.com/KartikLabhshetwar/better-shot/releases).
+
 ## Development Setup
 
 ### Prerequisites
@@ -96,8 +108,7 @@ bettershot/
 │   │   │   ├── BackgroundSelector.tsx  # Background selection UI
 │   │   │   ├── AssetGrid.tsx           # Asset library grid
 │   │   │   ├── EffectsPanel.tsx        # Blur and noise controls
-│   │   │   ├── ImageRoundnessControl.tsx # Border radius control
-│   │   │   └── OCRResultsDialog.tsx    # Dialog for displaying OCR results
+│   │   │   └── ImageRoundnessControl.tsx # Border radius control
 │   │   ├── preferences/    # Settings and preferences
 │   │   │   ├── PreferencesPage.tsx         # Main preferences page
 │   │   │   ├── BackgroundImageSelector.tsx # Default background picker
@@ -115,18 +126,12 @@ bettershot/
 │   │   ├── annotation-utils.ts  # Annotation rendering utilities
 │   │   ├── auto-process.ts      # Auto-apply background logic
 │   │   ├── canvas-utils.ts      # Canvas manipulation utilities
-│   │   ├── ocr.ts               # OCR text extraction using Tesseract.js
 │   │   ├── onboarding.ts        # Onboarding state management
 │   │   └── utils.ts             # General utilities
 │   ├── types/              # TypeScript type definitions
 │   │   └── annotations.ts  # Annotation type definitions
 │   └── assets/             # Static assets (images, etc.)
 ├── public/                 # Static files copied to dist
-│   └── tesseract/          # Bundled Tesseract.js files for offline OCR
-│       ├── worker.min.js           # Tesseract.js web worker
-│       ├── tesseract-core*.wasm    # WASM binaries
-│       ├── tesseract-core*.wasm.js # WASM JS loaders
-│       └── eng.traineddata.gz      # English language data
 ├── src-tauri/              # Rust backend (Tauri)
 │   ├── src/
 │   │   ├── commands.rs     # Tauri command handlers
@@ -259,7 +264,6 @@ Write tests for **critical paths only**:
 - Image processing operations (blur, shadow, background effects)
 - Clipboard operations
 - Annotation rendering and manipulation
-- OCR text extraction and preprocessing
 - Error handling in critical flows
 
 ### Test Structure
@@ -335,7 +339,6 @@ When creating a PR, include:
 - **Vite 7**: Build tool and dev server
 - **Tailwind CSS 4**: Styling
 - **Sonner**: Toast notifications
-- **Tesseract.js**: OCR text extraction
 
 ### Backend
 - **Rust**: System programming language
@@ -407,33 +410,6 @@ When creating a PR, include:
 2. Default shortcuts are defined in `src/App.tsx` as `DEFAULT_SHORTCUTS`
 3. Shortcuts are registered using `@tauri-apps/plugin-global-shortcut`
 4. Changes trigger re-registration via `settingsVersion` state
-
-### Updating Tesseract.js (OCR)
-
-OCR files are bundled locally in `public/tesseract/` for offline support. To update:
-
-1. **Update the npm package:**
-   ```bash
-   pnpm update tesseract.js
-   ```
-
-2. **Copy new worker file:**
-   ```bash
-   cp node_modules/tesseract.js/dist/worker.min.js public/tesseract/
-   ```
-
-3. **Copy new WASM core files:**
-   ```bash
-   cp node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/tesseract-core*.wasm public/tesseract/
-   cp node_modules/.pnpm/tesseract.js-core@*/node_modules/tesseract.js-core/tesseract-core*.wasm.js public/tesseract/
-   ```
-
-4. **Update language data (if needed):**
-   ```bash
-   curl -L -o public/tesseract/eng.traineddata.gz "https://tessdata.projectnaptha.com/4.0.0/eng.traineddata.gz"
-   ```
-
-5. **Test OCR functionality** in both development and production builds
 
 ### Updating the Homepage Keyboard Shortcuts Display
 
