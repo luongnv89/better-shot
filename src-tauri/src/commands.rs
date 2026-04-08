@@ -401,8 +401,31 @@ end try"#;
 }
 
 #[tauri::command]
+pub fn delete_temp_workspace_file(file_path: String) -> Result<(), String> {
+    let path = PathBuf::from(&file_path);
+    // Only delete files that are inside the bettershot-uploads temp directory
+    let mut expected_dir = std::env::temp_dir();
+    expected_dir.push("bettershot-uploads");
+    let canonical_path = path
+        .canonicalize()
+        .map_err(|_| "File not found or already deleted".to_string())?;
+    let canonical_dir = expected_dir
+        .canonicalize()
+        .map_err(|_| "Temp workspace directory not found".to_string())?;
+    if !canonical_path.starts_with(&canonical_dir) {
+        return Err("Refusing to delete file outside the bettershot-uploads workspace".to_string());
+    }
+    fs::remove_file(&canonical_path)
+        .map_err(|e| format!("Failed to delete temp file: {}", e))
+}
+
+#[tauri::command]
 pub fn copy_file_to_temp_workspace(source_path: String) -> Result<String, String> {
     let source = PathBuf::from(&source_path);
+    // Canonicalize to resolve symlinks and reject path traversal components
+    let source = source
+        .canonicalize()
+        .map_err(|_| "Selected file not found or path is invalid".to_string())?;
     if !source.exists() {
         return Err("Selected file no longer exists".to_string());
     }

@@ -469,6 +469,7 @@ function App() {
       const selected = await invoke<string | null>("open_image_file_dialog");
 
       if (!selected) {
+        setIsPermissionDialogOpen(false);
         return;
       }
 
@@ -498,7 +499,7 @@ function App() {
         imageData: editedImageData,
         saveDir,
         copyToClip: copyToClipboard,
-        prefix: "bettershot_",
+        prefix: "bettershot",
         filename: filenameOverride,
       });
 
@@ -506,6 +507,11 @@ function App() {
         description: savedPath,
         duration: 4000,
       });
+
+      // Clean up sandboxed temp file if it came from the upload flow
+      if (tempScreenshotPath?.includes("bettershot-uploads")) {
+        invoke("delete_temp_workspace_file", { filePath: tempScreenshotPath }).catch(console.error);
+      }
 
       editorActions.reset();
       setMode("main");
@@ -523,6 +529,10 @@ function App() {
   }
 
   async function handleEditorCancel() {
+    // Clean up sandboxed temp file if it came from the upload flow
+    if (tempScreenshotPath?.includes("bettershot-uploads")) {
+      invoke("delete_temp_workspace_file", { filePath: tempScreenshotPath }).catch(console.error);
+    }
     editorActions.reset();
     setMode("main");
     setTempScreenshotPath(null);

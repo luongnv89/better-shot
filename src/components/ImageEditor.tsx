@@ -175,7 +175,7 @@ export function ImageEditor({
       if (!highQualityCanvas) { setIsCopying(false); return; }
       const dataUrl = highQualityCanvas.toDataURL("image/png");
       await invoke<string>("save_edited_image", {
-        imageData: dataUrl, saveDir: tempDir, copyToClip: true, prefix: "bettershot_",
+        imageData: dataUrl, saveDir: tempDir, copyToClip: true, prefix: "bettershot",
       });
       toast.success("Copied to clipboard", { duration: 2000 });
     } catch (err) {
