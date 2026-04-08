@@ -3,7 +3,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { Store } from "@tauri-apps/plugin-store";
 import { gradientOptions, type GradientOption } from "@/components/editor/BackgroundSelector";
-import { resolveBackgroundPath, getDefaultBackgroundPath } from "@/lib/asset-registry";
+import { resolveBackgroundPath, getDefaultBackgroundPath, toStorableValue } from "@/lib/asset-registry";
 import { Annotation } from "@/types/annotations";
 
 // ============================================================================
@@ -193,27 +193,141 @@ const INITIAL_STATE: EditorState = {
   _historyPaused: false,
 };
 
+const SETTINGS_STORE_NAME = "settings.json";
+const PERSISTED_SETTINGS_KEY = "lastEditorSettings";
+
+type PersistedEditorSettings = {
+  backgroundType?: BackgroundType;
+  customColor?: string;
+  selectedImage?: string | null;
+  gradientId?: string;
+  noiseAmount?: number;
+  borderRadius?: number;
+  padding?: number;
+  shadow?: Partial<ShadowSettings>;
+  canvasDimensions?: Partial<CanvasDimensions>;
+  imageOffset?: Partial<ImageOffset>;
+  imageScalingMode?: ImageScalingMode;
+  imageBorderSize?: number;
+};
+
+function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSettings {
+  const gradientOption = gradientOptions.find((option) => option.id === stored.gradientId) ?? DEFAULT_GRADIENT;
+  return {
+    backgroundType: stored.backgroundType ?? DEFAULT_SETTINGS.backgroundType,
+    customColor: stored.customColor ?? DEFAULT_SETTINGS.customColor,
+    selectedImageSrc: resolveBackgroundPath(stored.selectedImage ?? null),
+    gradientId: gradientOption.id,
+    gradientSrc: gradientOption.src,
+    gradientColors: gradientOption.colors,
+    noiseAmount: stored.noiseAmount ?? DEFAULT_SETTINGS.noiseAmount,
+    borderRadius: stored.borderRadius ?? DEFAULT_SETTINGS.borderRadius,
+    padding: stored.padding ?? DEFAULT_SETTINGS.padding,
+    shadow: {
+      blur: stored.shadow?.blur ?? DEFAULT_SETTINGS.shadow.blur,
+      offsetX: stored.shadow?.offsetX ?? DEFAULT_SETTINGS.shadow.offsetX,
+      offsetY: stored.shadow?.offsetY ?? DEFAULT_SETTINGS.shadow.offsetY,
+      opacity: stored.shadow?.opacity ?? DEFAULT_SETTINGS.shadow.opacity,
+    },
+    canvasDimensions: {
+      width: stored.canvasDimensions?.width ?? DEFAULT_SETTINGS.canvasDimensions.width,
+      height: stored.canvasDimensions?.height ?? DEFAULT_SETTINGS.canvasDimensions.height,
+      aspectRatioLocked: stored.canvasDimensions?.aspectRatioLocked ?? DEFAULT_SETTINGS.canvasDimensions.aspectRatioLocked,
+    },
+    imageOffset: {
+      x: stored.imageOffset?.x ?? DEFAULT_SETTINGS.imageOffset.x,
+      y: stored.imageOffset?.y ?? DEFAULT_SETTINGS.imageOffset.y,
+    },
+    imageScalingMode: stored.imageScalingMode ?? DEFAULT_SETTINGS.imageScalingMode,
+    imageBorderSize: stored.imageBorderSize ?? DEFAULT_SETTINGS.imageBorderSize,
+  };
+}
+
+async function persistEditorSettings(settings: EditorSettings) {
+  try {
+    const store = await Store.load(SETTINGS_STORE_NAME);
+    const storableImage = settings.selectedImageSrc ? toStorableValue(settings.selectedImageSrc) : null;
+    await store.set(PERSISTED_SETTINGS_KEY, {
+      backgroundType: settings.backgroundType,
+      customColor: settings.customColor,
+      selectedImage: storableImage,
+      gradientId: settings.gradientId,
+      noiseAmount: settings.noiseAmount,
+      borderRadius: settings.borderRadius,
+      padding: settings.padding,
+      shadow: {
+        blur: settings.shadow.blur,
+        offsetX: settings.shadow.offsetX,
+        offsetY: settings.shadow.offsetY,
+        opacity: settings.shadow.opacity,
+      },
+      canvasDimensions: {
+        width: settings.canvasDimensions.width,
+        height: settings.canvasDimensions.height,
+        aspectRatioLocked: settings.canvasDimensions.aspectRatioLocked,
+      },
+      imageOffset: {
+        x: settings.imageOffset.x,
+        y: settings.imageOffset.y,
+      },
+      imageScalingMode: settings.imageScalingMode,
+      imageBorderSize: settings.imageBorderSize,
+    });
+    await store.save();
+  } catch (err) {
+    console.error("Failed to persist editor settings:", err);
+  }
+}
+
+export async function clearPersistedEditorSettings(): Promise<boolean> {
+  try {
+    const store = await Store.load(SETTINGS_STORE_NAME);
+    await store.delete(PERSISTED_SETTINGS_KEY);
+    await store.save();
+    return true;
+  } catch (err) {
+    console.error("Failed to clear persisted editor settings:", err);
+    return false;
+  }
+}
+
 // ============================================================================
 // Store
 // ============================================================================
 
 export const useEditorStore = create<EditorStore>()(
   subscribeWithSelector(
-    immer((set, get) => ({
-      ...INITIAL_STATE,
+    immer((set, get) => {
+      const persistIfReady = () => {
+        if (!get()._isInitialized) return;
+        persistEditorSettings(get().settings);
+      };
 
-      // ========================================
-      // Initialization
-      // ========================================
-      initialize: async () => {
+      return {
+        ...INITIAL_STATE,
+
+        // ========================================
+        // Initialization
+        // ========================================
+        initialize: async () => {
         if (get()._isInitialized) return;
-        
+
         try {
-          const store = await Store.load("settings.json");
+          const store = await Store.load(SETTINGS_STORE_NAME);
+          const storedSettings = await store.get<PersistedEditorSettings>(PERSISTED_SETTINGS_KEY);
+
+          if (storedSettings) {
+            set((state) => {
+              state.settings = buildSettingsFromPersisted(storedSettings);
+              state._isInitialized = true;
+            });
+            return;
+          }
+
           const storedBgType = await store.get<BackgroundType>("defaultBackgroundType");
           const storedCustomColor = await store.get<string>("defaultCustomColor");
           const storedBg = await store.get<string>("defaultBackgroundImage");
-          
+
           set((state) => {
             if (storedBgType) {
               state.settings.backgroundType = storedBgType;
@@ -233,7 +347,7 @@ export const useEditorStore = create<EditorStore>()(
             state._isInitialized = true;
           });
         }
-      },
+        },
 
       // ========================================
       // Settings - Transient (no history)
@@ -256,6 +370,7 @@ export const useEditorStore = create<EditorStore>()(
           Object.assign(state.settings, updates);
           state.future = [];
         });
+        persistIfReady();
       },
 
       setBackgroundType: (type) => {
@@ -393,6 +508,7 @@ export const useEditorStore = create<EditorStore>()(
           s.settings.shadow.blur = blur;
           s.future = [];
         });
+        persistIfReady();
       },
 
       setShadowOffsetX: (offsetX) => {
@@ -401,6 +517,7 @@ export const useEditorStore = create<EditorStore>()(
           state.settings.shadow.offsetX = offsetX;
           state.future = [];
         });
+        persistIfReady();
       },
 
       setShadowOffsetY: (offsetY) => {
@@ -409,6 +526,7 @@ export const useEditorStore = create<EditorStore>()(
           state.settings.shadow.offsetY = offsetY;
           state.future = [];
         });
+        persistIfReady();
       },
 
       setShadowOpacity: (opacity) => {
@@ -417,6 +535,7 @@ export const useEditorStore = create<EditorStore>()(
           state.settings.shadow.opacity = opacity;
           state.future = [];
         });
+        persistIfReady();
       },
 
       setCanvasWidth: (width) => {
@@ -608,8 +727,9 @@ export const useEditorStore = create<EditorStore>()(
           state._isInitialized = false;
         });
       },
-    }))
-  )
+    };
+  })
+)
 );
 
 // ============================================================================

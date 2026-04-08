@@ -394,6 +394,48 @@ describe("editorStore - canvas dimensions feature", () => {
     });
   });
 
+  describe("iPhone display preset dimensions", () => {
+    it("should set 1242×2688 preset", () => {
+      act(() => {
+        editorActions.setCanvasDimensions({ width: 1242, height: 2688 });
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.settings.canvasDimensions.width).toBe(1242);
+      expect(state.settings.canvasDimensions.height).toBe(2688);
+    });
+
+    it("should set 2688×1242 preset", () => {
+      act(() => {
+        editorActions.setCanvasDimensions({ width: 2688, height: 1242 });
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.settings.canvasDimensions.width).toBe(2688);
+      expect(state.settings.canvasDimensions.height).toBe(1242);
+    });
+
+    it("should set 1284×2778 preset", () => {
+      act(() => {
+        editorActions.setCanvasDimensions({ width: 1284, height: 2778 });
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.settings.canvasDimensions.width).toBe(1284);
+      expect(state.settings.canvasDimensions.height).toBe(2778);
+    });
+
+    it("should set 2778×1284 preset", () => {
+      act(() => {
+        editorActions.setCanvasDimensions({ width: 2778, height: 1284 });
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.settings.canvasDimensions.width).toBe(2778);
+      expect(state.settings.canvasDimensions.height).toBe(1284);
+    });
+  });
+
   describe("undo/redo with canvas dimensions", () => {
     it("should undo dimension changes", () => {
       act(() => {
