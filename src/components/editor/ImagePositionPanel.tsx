@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 import { calculateOffsetLimits } from "@/lib/canvas-utils";
 import type { ImageOffset, ImageScalingMode } from "@/stores/editorStore";
 
@@ -10,9 +10,11 @@ interface ImagePositionPanelProps {
   backgroundWidth: number;
   backgroundHeight: number;
   imageScalingMode?: ImageScalingMode;
+  expanded?: boolean;
   onOffsetXChange: (offsetX: number) => void;
   onOffsetYChange: (offsetY: number) => void;
   onReset: () => void;
+  onToggle?: () => void;
 }
 
 export const ImagePositionPanel = memo(function ImagePositionPanel({
@@ -26,114 +28,98 @@ export const ImagePositionPanel = memo(function ImagePositionPanel({
   onOffsetYChange,
   onReset,
 }: ImagePositionPanelProps) {
-  // Calculate limits for this image/background size combination
   const offsetLimits = useMemo(
-    () =>
-      calculateOffsetLimits(
-        screenshotWidth,
-        screenshotHeight,
-        backgroundWidth,
-        backgroundHeight
-      ),
+    () => calculateOffsetLimits(screenshotWidth, screenshotHeight, backgroundWidth, backgroundHeight),
     [screenshotWidth, screenshotHeight, backgroundWidth, backgroundHeight]
   );
 
-  // Check if repositioning is possible
-  // - For "none" mode: image must be larger than background
-  // - For "cover" mode: always allow (image is scaled to cover background)
-  // - For other modes: image must be larger than background after scaling
   const canReposition =
     imageScalingMode === "cover" ||
     (screenshotWidth > backgroundWidth || screenshotHeight > backgroundHeight);
 
-  const handleOffsetXInput = useCallback(
-    (value: string) => {
-      const numValue = parseInt(value, 10);
-      if (!isNaN(numValue)) {
-        const clamped = Math.max(
-          offsetLimits.minOffsetX,
-          Math.min(offsetLimits.maxOffsetX, numValue)
-        );
-        onOffsetXChange(clamped);
-      }
-    },
-    [onOffsetXChange, offsetLimits]
-  );
+  const handleOffsetXInput = useCallback((value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) {
+      const clamped = Math.max(offsetLimits.minOffsetX, Math.min(offsetLimits.maxOffsetX, num));
+      onOffsetXChange(clamped);
+    }
+  }, [onOffsetXChange, offsetLimits]);
 
-  const handleOffsetYInput = useCallback(
-    (value: string) => {
-      const numValue = parseInt(value, 10);
-      if (!isNaN(numValue)) {
-        const clamped = Math.max(
-          offsetLimits.minOffsetY,
-          Math.min(offsetLimits.maxOffsetY, numValue)
-        );
-        onOffsetYChange(clamped);
-      }
-    },
-    [onOffsetYChange, offsetLimits]
-  );
+  const handleOffsetYInput = useCallback((value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) {
+      const clamped = Math.max(offsetLimits.minOffsetY, Math.min(offsetLimits.maxOffsetY, num));
+      onOffsetYChange(clamped);
+    }
+  }, [onOffsetYChange, offsetLimits]);
 
-  // Don't show panel if repositioning not possible
   if (!canReposition) {
     return null;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Image Position</h3>
-        <Button
-          variant="ghost"
-          size="sm"
+    <div>
+      {/* Tip */}
+      <div style={{
+        padding: '8px 10px',
+        background: 'oklch(0.19 0.009 250)',
+        border: '1px solid oklch(0.26 0.009 250)',
+        borderRadius: 6,
+        fontSize: 11,
+        color: 'oklch(0.55 0.01 250)',
+        marginBottom: 16,
+        lineHeight: 1.5,
+      }}>
+        Hold <kbd style={{
+          background: 'oklch(0.22 0.009 250)',
+          border: '1px solid oklch(0.30 0.009 250)',
+          borderRadius: 3, padding: '1px 5px', fontSize: 10,
+          fontFamily: 'var(--font-mono)',
+        }}>Alt</kbd> and drag on the canvas to reposition
+      </div>
+
+      <div className="section-header" style={{ paddingTop: 0 }}>
+        <span className="section-title">Offset</span>
+        <button
           onClick={onReset}
-          className="text-xs h-6 px-2"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 10, color: 'oklch(0.48 0.012 250)',
+            background: 'none', border: 'none', cursor: 'pointer',
+          }}
         >
+          <RotateCcw className="size-3" />
           Reset
-        </Button>
+        </button>
       </div>
 
-      {/* Info message */}
-      <div className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
-        💡 Hold <kbd className="bg-background px-1 rounded text-xs">Alt</kbd> and
-        drag on canvas to reposition
-      </div>
-
-      {/* Offset inputs */}
-      <div className="space-y-3">
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
-            Horizontal Offset
-          </label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'oklch(0.42 0.009 250)', marginBottom: 4 }}>X</div>
           <input
             type="number"
             value={imageOffset.x}
             onChange={(e) => handleOffsetXInput(e.target.value)}
             min={offsetLimits.minOffsetX}
             max={offsetLimits.maxOffsetX}
-            className="w-full px-2 py-1.5 bg-secondary border border-border rounded text-sm text-card-foreground"
+            className="studio-input"
           />
-          <div className="text-xs text-muted-foreground mt-1">
-            Range: {Math.round(offsetLimits.minOffsetX)} to{" "}
-            {Math.round(offsetLimits.maxOffsetX)}px
+          <div style={{ fontSize: 10, color: 'oklch(0.35 0.009 250)', marginTop: 3, fontFamily: 'var(--font-mono)' }}>
+            {Math.round(offsetLimits.minOffsetX)} to {Math.round(offsetLimits.maxOffsetX)}
           </div>
         </div>
-
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
-            Vertical Offset
-          </label>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'oklch(0.42 0.009 250)', marginBottom: 4 }}>Y</div>
           <input
             type="number"
             value={imageOffset.y}
             onChange={(e) => handleOffsetYInput(e.target.value)}
             min={offsetLimits.minOffsetY}
             max={offsetLimits.maxOffsetY}
-            className="w-full px-2 py-1.5 bg-secondary border border-border rounded text-sm text-card-foreground"
+            className="studio-input"
           />
-          <div className="text-xs text-muted-foreground mt-1">
-            Range: {Math.round(offsetLimits.minOffsetY)} to{" "}
-            {Math.round(offsetLimits.maxOffsetY)}px
+          <div style={{ fontSize: 10, color: 'oklch(0.35 0.009 250)', marginTop: 3, fontFamily: 'var(--font-mono)' }}>
+            {Math.round(offsetLimits.minOffsetY)} to {Math.round(offsetLimits.maxOffsetY)}
           </div>
         </div>
       </div>

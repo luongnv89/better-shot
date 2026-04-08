@@ -1,12 +1,6 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
 import { Lock, Unlock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { CanvasDimensions, ImageScalingMode } from "@/stores/editorStore";
 
@@ -17,6 +11,7 @@ interface BackgroundSizePanelProps {
   padding: number;
   imageScalingMode: ImageScalingMode;
   imageBorderSize: number;
+  expanded?: boolean;
   onWidthChange: (width: number) => void;
   onHeightChange: (height: number) => void;
   onAspectRatioLockedChange: (locked: boolean) => void;
@@ -24,14 +19,37 @@ interface BackgroundSizePanelProps {
   onScalingModeChange: (mode: ImageScalingMode) => void;
   onBorderSizeChange: (size: number) => void;
   onReset: () => void;
+  onToggle?: () => void;
 }
 
-const PRESETS = [
-  { label: "1280 × 800", width: 1280, height: 800 },
-  { label: "1440 × 900", width: 1440, height: 900 },
-  { label: "2560 × 1600", width: 2560, height: 1600 },
-  { label: "2880 × 1800", width: 2880, height: 1800 },
-] as const;
+type BackgroundPreset = {
+  label: string;
+  width: number;
+  height: number;
+  tooltip: string;
+};
+
+const PRESETS: BackgroundPreset[] = [
+  { label: "1280×800",  width: 1280, height: 800,  tooltip: "macOS App Store" },
+  { label: "1440×900",  width: 1440, height: 900,  tooltip: "macOS App Store" },
+  { label: "2560×1600", width: 2560, height: 1600, tooltip: "macOS App Store" },
+  { label: "2880×1800", width: 2880, height: 1800, tooltip: "macOS App Store" },
+];
+
+const IPHONE_PRESETS: BackgroundPreset[] = [
+  { label: "1242×2688", width: 1242, height: 2688, tooltip: "iPhone portrait" },
+  { label: "2688×1242", width: 2688, height: 1242, tooltip: "iPhone landscape" },
+  { label: "1284×2778", width: 1284, height: 2778, tooltip: "iPhone portrait" },
+  { label: "2778×1284", width: 2778, height: 1284, tooltip: "iPhone landscape" },
+];
+
+const scalingModes: { value: ImageScalingMode; label: string; desc: string }[] = [
+  { value: "none",           label: "None",            desc: "Centered, no scale" },
+  { value: "fit",            label: "Fit",             desc: "Fit with padding" },
+  { value: "fit-with-border",label: "Fit + Border",    desc: "Fit with white border" },
+  { value: "cover",          label: "Cover",           desc: "Fill, may crop" },
+  { value: "contain",        label: "Contain",         desc: "Fit, no upscale" },
+];
 
 export const BackgroundSizePanel = memo(function BackgroundSizePanel({
   dimensions,
@@ -52,259 +70,203 @@ export const BackgroundSizePanel = memo(function BackgroundSizePanel({
   const [inputHeight, setInputHeight] = useState(dimensions.height || 0);
   const [inputBorderSize, setInputBorderSize] = useState(imageBorderSize);
 
-  // Sync input state when dimensions change (from undo/redo or aspect ratio lock)
-  useEffect(() => {
-    setInputWidth(dimensions.width || 0);
-    setInputHeight(dimensions.height || 0);
-  }, [dimensions.width, dimensions.height]);
+  useEffect(() => { setInputWidth(dimensions.width || 0); setInputHeight(dimensions.height || 0); }, [dimensions.width, dimensions.height]);
+  useEffect(() => { setInputBorderSize(imageBorderSize); }, [imageBorderSize]);
 
-  // Sync border size when it changes
-  useEffect(() => {
-    setInputBorderSize(imageBorderSize);
-  }, [imageBorderSize]);
+  const autoDimensions = useMemo(() => ({
+    width: screenshotWidth + padding * 2,
+    height: screenshotHeight + padding * 2,
+  }), [screenshotWidth, screenshotHeight, padding]);
 
-  // Calculate auto dimensions (screenshot + padding)
-  const autoDimensions = useMemo(
-    () => ({
-      width: screenshotWidth + padding * 2,
-      height: screenshotHeight + padding * 2,
-    }),
-    [screenshotWidth, screenshotHeight, padding]
-  );
-
-  // Effective dimensions (0 = auto)
   const effectiveWidth = dimensions.width || autoDimensions.width;
   const effectiveHeight = dimensions.height || autoDimensions.height;
-
-  // Check if custom size is set (not auto)
   const hasCustomSize = dimensions.width > 0 || dimensions.height > 0;
 
-  const handleReset = useCallback(() => {
-    setInputWidth(0);
-    setInputHeight(0);
-    onReset();
-  }, [onReset]);
+  const handleReset = useCallback(() => { setInputWidth(0); setInputHeight(0); onReset(); }, [onReset]);
+  const handleToggleLock = useCallback(() => { onAspectRatioLockedChange(!dimensions.aspectRatioLocked); }, [dimensions.aspectRatioLocked, onAspectRatioLockedChange]);
 
-  const handleToggleLock = useCallback(() => {
-    onAspectRatioLockedChange(!dimensions.aspectRatioLocked);
-  }, [dimensions.aspectRatioLocked, onAspectRatioLockedChange]);
+  const handlePresetClick = useCallback((preset: BackgroundPreset) => {
+    setInputWidth(preset.width);
+    setInputHeight(preset.height);
+    onPresetSelect(preset.width, preset.height);
+  }, [onPresetSelect]);
 
-  const handlePresetClick = useCallback(
-    (preset: (typeof PRESETS)[number]) => {
-      setInputWidth(preset.width);
-      setInputHeight(preset.height);
-      onPresetSelect(preset.width, preset.height);
-    },
-    [onPresetSelect]
-  );
+  const handleWidthInput = useCallback((value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) { const c = Math.max(100, Math.min(5000, num)); setInputWidth(c); onWidthChange(c); }
+  }, [onWidthChange]);
 
-  const handleWidthInput = useCallback(
-    (value: string) => {
-      const numValue = parseInt(value, 10);
-      if (!isNaN(numValue)) {
-        const clamped = Math.max(100, Math.min(5000, numValue));
-        setInputWidth(clamped);
-        onWidthChange(clamped);
-      }
-    },
-    [onWidthChange]
-  );
+  const handleHeightInput = useCallback((value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) { const c = Math.max(100, Math.min(5000, num)); setInputHeight(c); onHeightChange(c); }
+  }, [onHeightChange]);
 
-  const handleHeightInput = useCallback(
-    (value: string) => {
-      const numValue = parseInt(value, 10);
-      if (!isNaN(numValue)) {
-        const clamped = Math.max(100, Math.min(5000, numValue));
-        setInputHeight(clamped);
-        onHeightChange(clamped);
-      }
-    },
-    [onHeightChange]
-  );
-
-  const handleBorderSizeInput = useCallback(
-    (value: string) => {
-      const numValue = parseInt(value, 10);
-      if (!isNaN(numValue)) {
-        const clamped = Math.max(0, Math.min(100, numValue));
-        setInputBorderSize(clamped);
-        onBorderSizeChange(clamped);
-      }
-    },
-    [onBorderSizeChange]
-  );
-
-  const scalingModes: { value: ImageScalingMode; label: string; description: string }[] = [
-    { value: "none", label: "None", description: "No scaling, image centered" },
-    { value: "fit", label: "Fit", description: "Scale to fit with padding" },
-    { value: "fit-with-border", label: "Fit with Border", description: "Fit with border around image" },
-    { value: "cover", label: "Cover", description: "Scale to cover, may crop" },
-    { value: "contain", label: "Contain", description: "Scale to fit, no upscaling" },
-  ];
+  const handleBorderSizeInput = useCallback((value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) { const c = Math.max(0, Math.min(100, num)); setInputBorderSize(c); onBorderSizeChange(c); }
+  }, [onBorderSizeChange]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Background Size</h3>
-        {hasCustomSize && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            className="text-xs h-6 px-2"
-          >
-            Reset
-          </Button>
-        )}
+    <div>
+      {/* macOS Presets */}
+      <div className="section-header" style={{ paddingTop: 0 }}>
+        <span className="section-title">macOS App Store</span>
       </div>
-
-      {/* Preset Buttons */}
-      <div className="space-y-2">
-        <label className="text-xs text-muted-foreground font-medium">
-          App Store Presets
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {PRESETS.map((preset) => (
-            <TooltipProvider key={preset.label}>
-              <Tooltip>
+      <TooltipProvider delayDuration={400}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {PRESETS.map((preset) => {
+            const isActive = effectiveWidth === preset.width && effectiveHeight === preset.height;
+            return (
+              <Tooltip key={preset.label}>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePresetClick(preset)}
-                    className={cn(
-                      "text-xs",
-                      effectiveWidth === preset.width &&
-                        effectiveHeight === preset.height &&
-                        "bg-primary/10 border-primary"
-                    )}
-                  >
+                  <button onClick={() => handlePresetClick(preset)} className={cn("preset-chip", isActive && "active")}>
                     {preset.label}
-                  </Button>
+                  </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs">macOS App Store requirement</p>
-                </TooltipContent>
+                <TooltipContent side="top" className="text-xs">{preset.tooltip}</TooltipContent>
               </Tooltip>
-            </TooltipProvider>
-          ))}
+            );
+          })}
         </div>
-      </div>
 
-      {/* Custom Size Inputs */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-muted-foreground font-medium">
-            Custom Size
-          </label>
+        {/* iPhone Presets */}
+        <div className="section-header">
+          <span className="section-title">iPhone</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+          {IPHONE_PRESETS.map((preset) => {
+            const isActive = effectiveWidth === preset.width && effectiveHeight === preset.height;
+            return (
+              <Tooltip key={preset.label}>
+                <TooltipTrigger asChild>
+                  <button onClick={() => handlePresetClick(preset)} className={cn("preset-chip", isActive && "active")}>
+                    {preset.label}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">{preset.tooltip}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+
+      <hr className="panel-divider" />
+
+      {/* Custom size inputs */}
+      <div className="section-header">
+        <span className="section-title">Custom Size</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {hasCustomSize && (
+            <button
+              onClick={handleReset}
+              style={{
+                fontSize: 10, color: 'oklch(0.48 0.012 250)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '2px 6px', borderRadius: 4,
+              }}
+            >
+              Reset
+            </button>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={handleToggleLock}
-                  className="size-6"
+                  style={{
+                    color: dimensions.aspectRatioLocked ? 'oklch(0.65 0.18 255)' : 'oklch(0.42 0.009 250)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: 3, borderRadius: 4,
+                    display: 'flex', alignItems: 'center',
+                  }}
                 >
-                  {dimensions.aspectRatioLocked ? (
-                    <Lock className="size-3" />
-                  ) : (
-                    <Unlock className="size-3" />
-                  )}
-                </Button>
+                  {dimensions.aspectRatioLocked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
+                </button>
               </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">
-                  {dimensions.aspectRatioLocked
-                    ? "Aspect ratio locked (16:10)"
-                    : "Aspect ratio unlocked"}
-                </p>
+              <TooltipContent side="left" className="text-xs">
+                {dimensions.aspectRatioLocked ? "Aspect ratio locked" : "Aspect ratio unlocked"}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
-            <div className="text-xs text-muted-foreground mb-1">Width</div>
-            <input
-              type="number"
-              value={inputWidth || ""}
-              onChange={(e) => handleWidthInput(e.target.value)}
-              placeholder="Auto"
-              min={100}
-              max={5000}
-              className="w-full px-2 py-1.5 bg-secondary border border-border rounded text-sm text-card-foreground"
-            />
-          </div>
-          <div className="pt-5 text-muted-foreground">×</div>
-          <div className="flex-1">
-            <div className="text-xs text-muted-foreground mb-1">Height</div>
-            <input
-              type="number"
-              value={inputHeight || ""}
-              onChange={(e) => handleHeightInput(e.target.value)}
-              placeholder="Auto"
-              min={100}
-              max={5000}
-              className="w-full px-2 py-1.5 bg-secondary border border-border rounded text-sm text-card-foreground"
-            />
-          </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'oklch(0.42 0.009 250)', marginBottom: 4 }}>W</div>
+          <input
+            type="number"
+            value={inputWidth || ""}
+            onChange={(e) => handleWidthInput(e.target.value)}
+            placeholder="Auto"
+            min={100} max={5000}
+            className="studio-input"
+          />
         </div>
-
-        <div className="text-xs text-muted-foreground">
-          Current: {effectiveWidth} × {effectiveHeight}px
-          {(dimensions.width === 0 || dimensions.height === 0) && " (Auto)"}
+        <div style={{ color: 'oklch(0.38 0.009 250)', fontSize: 12, paddingTop: 18, flexShrink: 0 }}>×</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: 'oklch(0.42 0.009 250)', marginBottom: 4 }}>H</div>
+          <input
+            type="number"
+            value={inputHeight || ""}
+            onChange={(e) => handleHeightInput(e.target.value)}
+            placeholder="Auto"
+            min={100} max={5000}
+            className="studio-input"
+          />
         </div>
       </div>
 
-      {/* Image Scaling Mode */}
-      <div className="space-y-3">
-        <label className="text-xs text-muted-foreground font-medium">
-          Image Scaling
-        </label>
-        <div className="space-y-2">
-          {scalingModes.map((mode) => (
-            <div key={mode.value} className="flex items-center">
-              <input
-                type="radio"
-                id={`scale-${mode.value}`}
-                name="scaling-mode"
-                value={mode.value}
-                checked={imageScalingMode === mode.value}
-                onChange={() => onScalingModeChange(mode.value)}
-                className="size-3 rounded"
-              />
-              <label htmlFor={`scale-${mode.value}`} className="ml-2 flex-1 cursor-pointer">
-                <div className="text-xs font-medium text-foreground">{mode.label}</div>
-                <div className="text-xs text-muted-foreground">{mode.description}</div>
-              </label>
+      <div style={{ fontSize: 10, color: 'oklch(0.38 0.009 250)', fontFamily: 'var(--font-mono)', marginBottom: 16 }}>
+        Current: {effectiveWidth} × {effectiveHeight}
+        {!hasCustomSize && " (auto)"}
+      </div>
+
+      <hr className="panel-divider" />
+
+      {/* Scaling mode */}
+      <div className="section-header">
+        <span className="section-title">Image Scaling</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16 }}>
+        {scalingModes.map((mode) => (
+          <button
+            key={mode.value}
+            onClick={() => onScalingModeChange(mode.value)}
+            className={cn("mode-btn", imageScalingMode === mode.value && "active")}
+          >
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+              border: '1.5px solid',
+              borderColor: imageScalingMode === mode.value ? 'oklch(0.65 0.18 255)' : 'oklch(0.38 0.009 250)',
+              background: imageScalingMode === mode.value ? 'oklch(0.65 0.18 255)' : 'transparent',
+            }} />
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 500 }}>{mode.label}</div>
+              <div style={{ fontSize: 10, opacity: 0.6 }}>{mode.desc}</div>
             </div>
-          ))}
-        </div>
+          </button>
+        ))}
       </div>
 
-      {/* Border Size (for fit-with-border mode) */}
+      {/* Border size for fit-with-border */}
       {imageScalingMode === "fit-with-border" && (
-        <div className="space-y-3">
-          <label className="text-xs text-muted-foreground font-medium">
-            Border Size
-          </label>
-          <div className="flex items-center gap-2">
+        <>
+          <div className="section-header">
+            <span className="section-title">Border Size</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input
               type="number"
               value={inputBorderSize}
               onChange={(e) => handleBorderSizeInput(e.target.value)}
-              min={0}
-              max={100}
-              className="w-full px-2 py-1.5 bg-secondary border border-border rounded text-sm text-card-foreground"
+              min={0} max={100}
+              className="studio-input"
+              style={{ flex: 1 }}
             />
-            <div className="text-xs text-muted-foreground min-w-fit">px</div>
+            <span style={{ fontSize: 11, color: 'oklch(0.42 0.009 250)', flexShrink: 0 }}>px</span>
           </div>
-          <div className="text-xs text-muted-foreground">
-            White border around scaled image
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
