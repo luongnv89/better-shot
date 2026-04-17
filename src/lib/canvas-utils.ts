@@ -21,6 +21,13 @@ export interface RenderOptions {
   imageScalingMode?: ImageScalingMode;
   imageBorderSize?: number;
   frameType?: FrameType;
+  macbookUseOuterBackground?: boolean;
+  macbookBackgroundType?: "transparent" | "white" | "black" | "gray" | "gradient" | "custom" | "image";
+  macbookCustomColor?: string;
+  macbookSelectedImage?: string | null;
+  macbookBgImage?: HTMLImageElement | null;
+  macbookGradientImage?: HTMLImageElement | null;
+  macbookScreenshotPadding?: number;
 }
 
 export interface OffsetLimits {
@@ -185,6 +192,13 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
     imageScalingMode = "none",
     imageBorderSize = 0,
     frameType = "none",
+    macbookUseOuterBackground = true,
+    macbookBackgroundType,
+    macbookCustomColor,
+    macbookSelectedImage,
+    macbookBgImage,
+    macbookGradientImage,
+    macbookScreenshotPadding = 0,
   } = options;
 
   // When a frame is active, compute frame dimensions first so we know the total size
@@ -308,7 +322,36 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
       // Frame mode: draw the device frame (shadow applies to the whole frame composite)
       const frameX = (bgWidth - frameDims.totalWidth) / 2;
       const frameY = (bgHeight - frameDims.totalHeight) / 2;
-      drawFrame(ctx, frameType, frameX, frameY, frameDims, image);
+      let macbookDisplayCanvas: HTMLCanvasElement | null = null;
+      if (frameType === "macbook") {
+        macbookDisplayCanvas = document.createElement("canvas");
+        macbookDisplayCanvas.width = frameDims.screenWidth;
+        macbookDisplayCanvas.height = frameDims.screenHeight;
+        const macbookDisplayCtx = macbookDisplayCanvas.getContext("2d");
+        if (!macbookDisplayCtx) throw new Error("Failed to get MacBook display canvas context");
+
+        drawBackground(
+          macbookDisplayCtx,
+          frameDims.screenWidth,
+          frameDims.screenHeight,
+          macbookUseOuterBackground ? backgroundType : (macbookBackgroundType ?? backgroundType),
+          macbookUseOuterBackground ? customColor : (macbookCustomColor ?? customColor),
+          macbookUseOuterBackground ? selectedImage : (macbookSelectedImage ?? null),
+          macbookUseOuterBackground ? bgImage : (macbookBgImage ?? null),
+          macbookUseOuterBackground ? gradientImage : (macbookGradientImage ?? null)
+        );
+
+        if (noiseAmount > 0) {
+          applyNoiseToBackground(
+            macbookDisplayCtx,
+            frameDims.screenWidth,
+            frameDims.screenHeight,
+            noiseAmount
+          );
+        }
+      }
+
+      drawFrame(ctx, frameType, frameX, frameY, frameDims, image, macbookDisplayCanvas, macbookScreenshotPadding);
     } else {
       // Normal mode: draw the screenshot with border radius + shadow
       const imageCanvas = document.createElement("canvas");

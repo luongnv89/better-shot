@@ -9,6 +9,8 @@ import {
   PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { BackgroundSelector, gradientOptions } from "./editor/BackgroundSelector";
 import { AssetGrid } from "./editor/AssetGrid";
 import { EffectsPanel } from "./editor/EffectsPanel";
@@ -266,6 +268,8 @@ export function ImageEditor({
   }, [imageLoaded, isSaving, isCopying, handleSave, handleCopy, handleUndo, handleRedo, onCancel]);
 
   const selectedGradientOption = gradientOptions.find(g => g.id === settings.gradientId) || gradientOptions[0];
+  const selectedMacbookGradientOption =
+    gradientOptions.find((g) => g.id === settings.macbookBackground.gradientId) || gradientOptions[0];
 
   const canReposition = !!(screenshotImage &&
     (screenshotImage.width > ((settings.canvasDimensions.width > 0 ? settings.canvasDimensions.width : screenshotImage.width + settings.padding * 2)) ||
@@ -532,6 +536,26 @@ export function ImageEditor({
                   frameType={settings.frameType}
                   onFrameTypeChange={actions.setFrameType}
                 />
+                {settings.frameType === "macbook" && (
+                  <div style={{ marginTop: 14, marginBottom: 2 }}>
+                    <div className="section-header" style={{ paddingTop: 0 }}>
+                      <span className="section-title">MacBook Display</span>
+                    </div>
+                    <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span className="toggle-label">Display Padding</span>
+                      <span className="toggle-value">{settings.macbookScreenshotPadding}%</span>
+                    </div>
+                    <Slider
+                      value={[settings.macbookScreenshotPadding]}
+                      onValueChange={(value) => actions.setMacbookScreenshotPaddingTransient(value[0])}
+                      onValueCommit={(value) => actions.setMacbookScreenshotPadding(value[0])}
+                      min={0}
+                      max={20}
+                      step={1}
+                      className="studio-slider w-full"
+                    />
+                  </div>
+                )}
                 <hr className="panel-divider" />
                 <ImageRoundnessControl
                   borderRadius={settings.borderRadius}
@@ -576,6 +600,64 @@ export function ImageEditor({
                   onImageSelect={actions.handleImageSelect}
                   onToggle={() => {}}
                 />
+                {settings.frameType === "macbook" && (
+                  <>
+                    <hr className="panel-divider" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div className="section-header" style={{ paddingTop: 0 }}>
+                        <span className="section-title">MacBook Display</span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '10px 12px',
+                        background: 'oklch(0.145 0.008 250)',
+                        border: '1px solid oklch(0.22 0.009 250)',
+                        borderRadius: 8,
+                      }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'oklch(0.82 0.01 250)' }}>
+                            Match Outside Background
+                          </div>
+                          <div style={{ marginTop: 2, fontSize: 10, lineHeight: 1.4, color: 'oklch(0.58 0.01 250)' }}>
+                            Use the same background outside the MacBook and inside the display.
+                          </div>
+                        </div>
+                        <Switch
+                          checked={settings.macbookUseOuterBackground}
+                          onCheckedChange={actions.setMacbookUseOuterBackground}
+                          aria-label="Match outside background inside the MacBook display"
+                        />
+                      </div>
+
+                      {!settings.macbookUseOuterBackground && (
+                        <>
+                          <BackgroundSelector
+                            backgroundType={settings.macbookBackground.backgroundType as "transparent" | "white" | "black" | "gray" | "gradient" | "custom"}
+                            customColor={settings.macbookBackground.customColor}
+                            selectedGradient={selectedMacbookGradientOption.id}
+                            expanded={true}
+                            onBackgroundTypeChange={actions.setMacbookBackgroundType}
+                            onCustomColorChange={actions.setMacbookCustomColor}
+                            onGradientSelect={actions.setMacbookGradient}
+                            onToggle={() => {}}
+                          />
+                          <hr className="panel-divider" />
+                          <AssetGrid
+                            categories={assetCategories}
+                            selectedImage={settings.macbookBackground.selectedImageSrc}
+                            backgroundType={settings.macbookBackground.backgroundType}
+                            expanded={true}
+                            onImageSelect={actions.handleMacbookImageSelect}
+                            onToggle={() => {}}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
