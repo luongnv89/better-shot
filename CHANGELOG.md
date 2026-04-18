@@ -5,6 +5,19 @@ All notable changes to Better Shot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2026-04-18
+
+### Added
+
+- **New brand identity**: Refreshed BetterShot logo across the app, Dock icon, README, and a new standalone landing page
+- **Signed & notarized builds**: Both Apple Silicon and Intel DMGs are now Developer ID signed, hardened-runtime, and notarized by Apple — no more "unidentified developer" warning on first launch
+
+### Chores
+
+- Switched bundle identifier to `com.luongnv.bettershot`
+- Added hardened-runtime entitlements for notarization
+- Ignored Apple signing assets (`*.provisionprofile`, `*.p12`, `*.mobileprovision`)
+
 ## [0.2.7] - 2026-04-10
 
 ### Added
