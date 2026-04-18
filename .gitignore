@@ -25,3 +25,8 @@ dist-ssr
 
 # Claude Code
 CLAUDE.md
+
+# Apple signing assets
+*.provisionprofile
+*.p12
+*.mobileprovision
