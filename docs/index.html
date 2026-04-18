@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>BetterShot — One shortcut. A screenshot worth sharing.</title>
 <meta name="description" content="Capture, polish, and ship beautiful screenshots on macOS in under a minute. Free, local, open source." />
-<link rel="icon" type="image/svg+xml" href="../assets/logo/favicon.svg" />
+<link rel="icon" type="image/svg+xml" href="./assets/logo/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
@@ -375,6 +375,22 @@
   }
   .alt-download a{color:var(--paper-dim);text-decoration:none;border-bottom:1px dashed var(--line-strong)}
   .alt-download a:hover{color:var(--accent)}
+  .alt-download strong{color:var(--paper);font-weight:500}
+  .download-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:640px){.download-grid{grid-template-columns:1fr}}
+  .download-card{
+    grid-column:span 1;
+    display:block;padding:22px 24px;border-radius:14px;
+    background:linear-gradient(180deg,rgba(244,239,230,.04),rgba(244,239,230,.02));
+    border:1px solid var(--line-strong);
+    color:var(--paper);text-decoration:none;
+    transition:transform .2s ease,border-color .2s ease,background .2s ease;
+  }
+  .download-card:hover{transform:translateY(-2px);border-color:var(--accent);background:linear-gradient(180deg,rgba(233,195,139,.08),rgba(233,195,139,.02))}
+  .download-arch{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+  .download-title{font-family:var(--serif);font-weight:400;font-size:20px;line-height:1.2;margin-bottom:6px}
+  .download-meta{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .download-grid .alt-download{grid-column:1 / -1;margin-top:4px}
 
   /* ——— FAQ ——— */
   .faq{padding:120px 0}
@@ -621,17 +637,25 @@
       <div>
         <div class="section-num" style="margin-bottom:18px">§ 03 — Install</div>
         <h2>Ready in <em style="font-style:italic;color:var(--accent)">thirty seconds.</em></h2>
-        <p>One command with Homebrew, or grab the DMG directly. macOS 10.15 or later.</p>
+        <p>Signed by Apple, notarized, and <strong>free</strong>. Pick the build that matches your Mac — macOS 10.15 or later.</p>
       </div>
-      <div>
-        <div class="code-block">
-          <span><span class="prompt">$</span> <span class="cmd">brew install --cask bettershot</span></span>
-          <button class="copy-btn" onclick="navigator.clipboard.writeText('brew install --cask bettershot');this.textContent='Copied'">Copy</button>
+      <div class="download-grid">
+        <a class="download-card" href="https://github.com/luongnv89/better-shot/releases/download/v0.2.8/bettershot_0.2.8_aarch64.dmg">
+          <div class="download-arch">Apple Silicon</div>
+          <div class="download-title">Download for M1 – M5</div>
+          <div class="download-meta">bettershot_0.2.8_aarch64.dmg · ~41 MB</div>
+        </a>
+        <a class="download-card" href="https://github.com/luongnv89/better-shot/releases/download/v0.2.8/bettershot_0.2.8_x64.dmg">
+          <div class="download-arch">Intel</div>
+          <div class="download-title">Download for Intel Macs</div>
+          <div class="download-meta">bettershot_0.2.8_x64.dmg · ~42 MB</div>
+        </a>
+        <div class="alt-download">
+          <span>Not sure which?</span> On your Mac, click the <strong>Apple menu → About This Mac</strong>. If the chip starts with "Apple" (M1/M2/M3/M4/M5), pick Apple Silicon. Otherwise, Intel.
         </div>
         <div class="alt-download">
-          <span>Or download:</span>
-          <a href="https://github.com/luongnv89/better-shot/releases" target="_blank" rel="noopener">Apple Silicon (.dmg)</a>
-          <a href="https://github.com/luongnv89/better-shot/releases" target="_blank" rel="noopener">Intel (.dmg)</a>
+          <span>All releases:</span>
+          <a href="https://github.com/luongnv89/better-shot/releases" target="_blank" rel="noopener">github.com/luongnv89/better-shot/releases</a>
         </div>
       </div>
     </div>

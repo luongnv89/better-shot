@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" fill="none">
+  <title>BetterShot</title>
+  <g transform="translate(4 4)">
+    <path d="M12 6 H52 Q58 6 58 12 V52 Q58 58 52 58 H12 Q6 58 6 52 V12 Q6 6 12 6 Z M12 12 V52 H52 V12 Z" fill="#FFFFFF"/>
+    <path d="M32 20 A12 12 0 1 1 32 44 A12 12 0 1 1 32 20 Z M32 26 A6 6 0 1 0 32 38 A6 6 0 1 0 32 26 Z" fill="#FFFFFF" fill-rule="evenodd"/>
+    <path d="M44 14 L50 20 L26 44 L20 38 Z" fill="#FFFFFF" fill-opacity="0.75"/>
+  </g>
+  <g font-family="'Fraunces', Georgia, serif" font-weight="500" letter-spacing="-0.02em">
+    <text x="84" y="47" font-size="30" fill="#FFFFFF">Better<tspan fill="#FFFFFF" fill-opacity="0.72" font-style="italic" font-weight="400">Shot</tspan></text>
+  </g>
+</svg>
