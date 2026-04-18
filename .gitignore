@@ -30,3 +30,5 @@ CLAUDE.md
 *.provisionprofile
 *.p12
 *.mobileprovision
+*.cer
+*.certSigningRequest
