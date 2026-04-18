@@ -1,7 +1,13 @@
-[![macOS](https://img.shields.io/badge/macOS-10.15%2B-lightgrey?style=flat-square)](https://github.com/luongnv89/better-shot/releases)
-[![Version](https://img.shields.io/github/v/release/luongnv89/better-shot?style=flat-square)](https://github.com/luongnv89/better-shot/releases)
-[![License: BSD-3](https://img.shields.io/badge/license-BSD--3--Clause-blue?style=flat-square)](./LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/luongnv89/better-shot?style=flat-square)](https://github.com/luongnv89/better-shot/stargazers)
+<p align="center">
+  <img src="./assets/logo/logo-full.svg" alt="BetterShot" height="72" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/luongnv89/better-shot/releases"><img src="https://img.shields.io/badge/macOS-10.15%2B-lightgrey?style=flat-square" alt="macOS"></a>
+  <a href="https://github.com/luongnv89/better-shot/releases"><img src="https://img.shields.io/github/v/release/luongnv89/better-shot?style=flat-square" alt="Version"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue?style=flat-square" alt="License: BSD-3"></a>
+  <a href="https://github.com/luongnv89/better-shot/stargazers"><img src="https://img.shields.io/github/stars/luongnv89/better-shot?style=flat-square" alt="GitHub stars"></a>
+</p>
 
 # One shortcut. A screenshot worth sharing.
 

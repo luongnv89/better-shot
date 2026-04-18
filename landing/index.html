@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BetterShot — One shortcut. A screenshot worth sharing.</title>
+<meta name="description" content="Capture, polish, and ship beautiful screenshots on macOS in under a minute. Free, local, open source." />
+<link rel="icon" type="image/svg+xml" href="../assets/logo/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0b0a08;
+    --ink-2:#15120e;
+    --ink-3:#201c16;
+    --paper:#f4efe6;
+    --paper-dim:#cdc4b3;
+    --muted:#8a8274;
+    --line:rgba(244,239,230,.12);
+    --line-strong:rgba(244,239,230,.22);
+    --accent:#e9c38b;       /* champagne */
+    --accent-2:#d98b5f;     /* burnt amber */
+    --accent-3:#7aa2a0;     /* muted teal */
+    --glow:0 0 120px rgba(233,195,139,.18);
+    --shadow-soft: 0 30px 80px -30px rgba(0,0,0,.6), 0 10px 30px -12px rgba(0,0,0,.5);
+    --shadow-deep: 0 60px 140px -40px rgba(0,0,0,.85), 0 20px 50px -20px rgba(0,0,0,.6);
+    --serif:"Fraunces", ui-serif, Georgia, serif;
+    --sans:"Inter Tight", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:var(--sans);
+    font-feature-settings:"ss01","cv11";
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  /* ——— Grain & atmosphere ——— */
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    pointer-events:none;z-index:1;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.93 0 0 0 0 0.87 0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity:.06;mix-blend-mode:overlay;
+  }
+  .noise-soft::before{
+    content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.4 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity:.08;mix-blend-mode:overlay;
+  }
+
+  /* ——— Layout ——— */
+  .wrap{max-width:1200px;margin:0 auto;padding:0 28px;position:relative;z-index:2}
+  section{position:relative;z-index:2}
+
+  /* ——— Nav ——— */
+  nav.top{
+    position:sticky;top:0;z-index:40;
+    backdrop-filter:blur(14px) saturate(140%);
+    -webkit-backdrop-filter:blur(14px) saturate(140%);
+    background:rgba(11,10,8,.55);
+    border-bottom:1px solid var(--line);
+  }
+  nav.top .row{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:500;font-size:20px;letter-spacing:-.01em;color:var(--paper);text-decoration:none}
+  .brand svg.mark{width:26px;height:26px;display:block;filter:drop-shadow(0 0 14px rgba(233,195,139,.35))}
+  .brand b{font-weight:500}
+  .brand i{font-style:italic;font-weight:400;color:var(--accent)}
+  nav .links{display:flex;gap:28px;align-items:center;font-size:14px;color:var(--paper-dim)}
+  nav .links a{color:inherit;text-decoration:none;transition:color .2s}
+  nav .links a:hover{color:var(--paper)}
+  nav .btn-ghost{
+    font-size:13px;padding:9px 16px;border:1px solid var(--line-strong);
+    border-radius:999px;color:var(--paper);text-decoration:none;
+    transition:background .25s,border-color .25s;
+  }
+  nav .btn-ghost:hover{background:rgba(244,239,230,.06);border-color:var(--paper-dim)}
+  @media (max-width:720px){nav .links a:not(.btn-ghost){display:none}}
+
+  /* ——— Hero ——— */
+  .hero{
+    padding:90px 0 40px;
+    position:relative;
+    isolation:isolate;
+  }
+  .hero-bg{
+    position:absolute;inset:-20% -10% 0 -10%;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 10%, rgba(233,195,139,.22), transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 20%, rgba(217,139,95,.18), transparent 60%),
+      radial-gradient(ellipse 40% 40% at 50% 70%, rgba(122,162,160,.14), transparent 70%);
+    filter:blur(10px);
+    animation:drift 22s ease-in-out infinite alternate;
+  }
+  @keyframes drift{
+    0%{transform:translate3d(0,0,0) scale(1)}
+    100%{transform:translate3d(-2%,2%,0) scale(1.05)}
+  }
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--paper-dim);
+    padding:7px 14px;border:1px solid var(--line-strong);border-radius:999px;
+    background:linear-gradient(180deg, rgba(244,239,230,.04), rgba(244,239,230,.01));
+  }
+  .eyebrow .pulse{
+    width:6px;height:6px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent);
+    animation:pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse{50%{opacity:.35;transform:scale(.8)}}
+
+  h1.display{
+    font-family:var(--serif);
+    font-weight:300;
+    font-size:clamp(44px, 8.2vw, 108px);
+    line-height:.95;
+    letter-spacing:-.035em;
+    margin:24px 0 24px;
+    max-width:14ch;
+  }
+  h1.display em{
+    font-style:italic;
+    font-weight:400;
+    background:linear-gradient(92deg,var(--accent) 0%, var(--accent-2) 55%, var(--accent) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .lede{
+    font-size:clamp(17px,1.6vw,20px);
+    color:var(--paper-dim);line-height:1.55;max-width:56ch;
+    font-weight:400;
+  }
+
+  .cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:36px;align-items:center}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:var(--sans);font-weight:500;font-size:15px;
+    text-decoration:none;border-radius:999px;padding:14px 22px;
+    transition:transform .2s ease, box-shadow .25s ease, background .25s;
+    will-change:transform;
+  }
+  .btn-primary{
+    color:var(--ink);
+    background:linear-gradient(180deg,#fbeccb, var(--accent));
+    box-shadow:0 10px 40px -10px rgba(233,195,139,.55), inset 0 1px 0 rgba(255,255,255,.6);
+    position:relative;overflow:hidden;
+  }
+  .btn-primary::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;
+    background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%);
+    transform:translateX(-120%);transition:transform .7s ease;
+  }
+  .btn-primary:hover{transform:translateY(-1px)}
+  .btn-primary:hover::after{transform:translateX(120%)}
+  .btn-secondary{
+    color:var(--paper);border:1px solid var(--line-strong);
+    background:rgba(244,239,230,.03);
+  }
+  .btn-secondary:hover{background:rgba(244,239,230,.08);border-color:var(--paper-dim)}
+
+  .trust-bar{
+    display:flex;gap:22px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);margin-top:28px;
+  }
+  .trust-bar span{display:inline-flex;align-items:center;gap:8px}
+  .trust-bar span::before{content:"";width:4px;height:4px;background:var(--accent);border-radius:50%}
+
+  /* ——— Hero mockup ——— */
+  .mockup-stage{
+    margin-top:70px;position:relative;
+    perspective:2400px;
+  }
+  .mockup-frame{
+    position:relative;
+    border-radius:22px;
+    background:linear-gradient(180deg, #1b1812, #0f0d0a);
+    padding:10px;
+    border:1px solid var(--line-strong);
+    box-shadow:var(--shadow-deep);
+    transform:rotateX(6deg) rotateZ(-.4deg);
+    transform-origin:center top;
+    transition:transform .8s cubic-bezier(.2,.7,.1,1);
+  }
+  .mockup-frame:hover{transform:rotateX(2deg) rotateZ(0deg)}
+  .mockup-chrome{
+    display:flex;gap:7px;padding:10px 14px;
+  }
+  .mockup-chrome i{width:11px;height:11px;border-radius:50%;display:block}
+  .mockup-chrome i:nth-child(1){background:#ff5f57}
+  .mockup-chrome i:nth-child(2){background:#febc2e}
+  .mockup-chrome i:nth-child(3){background:#28c840}
+  .mockup-frame img{
+    width:100%;display:block;border-radius:14px;
+    border:1px solid rgba(0,0,0,.4);
+  }
+  .mockup-halo{
+    position:absolute;inset:-10% -5% -20% -5%;z-index:-1;
+    background:radial-gradient(ellipse at 50% 60%, rgba(233,195,139,.28), transparent 60%);
+    filter:blur(40px);
+  }
+  .floating-chip{
+    position:absolute;
+    font-family:var(--mono);font-size:12px;
+    padding:10px 14px;border-radius:12px;
+    background:rgba(21,18,14,.85);
+    border:1px solid var(--line-strong);
+    backdrop-filter:blur(10px);
+    color:var(--paper);
+    box-shadow:var(--shadow-soft);
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .chip-1{top:-18px;left:6%;animation:bob 5s ease-in-out infinite}
+  .chip-2{bottom:8%;right:-10px;animation:bob 6s ease-in-out infinite reverse}
+  @keyframes bob{50%{transform:translateY(-10px)}}
+  .chip-1::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent-2)}
+  .chip-2::before{content:"✦";color:var(--accent);font-family:var(--serif)}
+
+  /* ——— Section headers ——— */
+  .section-head{
+    display:flex;align-items:baseline;justify-content:space-between;gap:24px;
+    padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:56px;
+  }
+  .section-num{
+    font-family:var(--mono);font-size:12px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  h2.section-title{
+    font-family:var(--serif);font-weight:300;
+    font-size:clamp(34px, 5vw, 64px);
+    line-height:1;letter-spacing:-.03em;
+    margin:0;max-width:18ch;
+  }
+  h2.section-title em{font-style:italic;color:var(--accent)}
+
+  /* ——— Problem / Solution split ——— */
+  .split{
+    padding:140px 0 60px;
+  }
+  .split-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start}
+  @media (max-width:900px){.split-grid{grid-template-columns:1fr}}
+  .split p{color:var(--paper-dim);font-size:17px;line-height:1.7;max-width:48ch}
+
+  .feature-card{
+    position:relative;
+    padding:28px;border-radius:18px;
+    background:linear-gradient(180deg, rgba(244,239,230,.035), rgba(244,239,230,.01));
+    border:1px solid var(--line);
+    transition:transform .3s ease, border-color .3s, background .3s;
+    overflow:hidden;
+  }
+  .feature-card:hover{transform:translateY(-4px);border-color:var(--line-strong);background:linear-gradient(180deg, rgba(244,239,230,.06), rgba(244,239,230,.02))}
+  .feature-card .icon{
+    width:42px;height:42px;border-radius:12px;
+    display:grid;place-items:center;margin-bottom:18px;
+    background:linear-gradient(180deg, rgba(233,195,139,.18), rgba(233,195,139,.05));
+    border:1px solid rgba(233,195,139,.25);
+    color:var(--accent);
+  }
+  .feature-card h3{
+    font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:-.01em;
+    margin:0 0 8px;
+  }
+  .feature-card p{color:var(--paper-dim);font-size:14.5px;line-height:1.6;margin:0}
+
+  .features-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:18px;
+  }
+  @media (max-width:900px){.features-grid{grid-template-columns:1fr 1fr}}
+  @media (max-width:560px){.features-grid{grid-template-columns:1fr}}
+
+  /* ——— How it works ——— */
+  .how{padding:140px 0}
+  .steps{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:22px;
+    counter-reset:step;
+  }
+  @media (max-width:900px){.steps{grid-template-columns:1fr 1fr}}
+  @media (max-width:560px){.steps{grid-template-columns:1fr}}
+  .step{
+    padding:26px;border-radius:18px;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(244,239,230,.03), transparent);
+    position:relative;
+  }
+  .step::before{
+    counter-increment:step;
+    content:"0" counter(step);
+    font-family:var(--mono);font-size:12px;color:var(--accent);
+    letter-spacing:.2em;
+  }
+  .step h4{
+    font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:-.01em;
+    margin:14px 0 8px;
+  }
+  .step p{color:var(--paper-dim);font-size:14px;line-height:1.6;margin:0}
+  .step .kbd-row{margin-top:14px;display:flex;gap:6px;flex-wrap:wrap}
+
+  kbd{
+    font-family:var(--mono);font-size:12px;
+    padding:4px 8px;border-radius:6px;
+    background:rgba(244,239,230,.06);
+    border:1px solid var(--line-strong);
+    border-bottom-width:2px;
+    color:var(--paper);
+    line-height:1;
+    display:inline-block;
+  }
+
+  /* ——— Privacy strip ——— */
+  .privacy{
+    padding:80px 0;
+    text-align:center;
+  }
+  .privacy-inner{
+    max-width:780px;margin:0 auto;
+    padding:60px 40px;border-radius:24px;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(122,162,160,.18), transparent 60%),
+      linear-gradient(180deg, rgba(244,239,230,.04), rgba(244,239,230,.01));
+    border:1px solid var(--line-strong);
+    position:relative;overflow:hidden;
+  }
+  .privacy-inner svg{margin-bottom:18px;color:var(--accent-3)}
+  .privacy h3{
+    font-family:var(--serif);font-weight:300;font-size:clamp(28px,3.6vw,42px);
+    letter-spacing:-.02em;margin:0 0 14px;
+  }
+  .privacy p{color:var(--paper-dim);font-size:17px;line-height:1.6;max-width:50ch;margin:0 auto}
+
+  /* ——— Install ——— */
+  .install{padding:80px 0 40px}
+  .install-inner{
+    display:grid;grid-template-columns:1.1fr 1fr;gap:60px;align-items:center;
+  }
+  @media (max-width:900px){.install-inner{grid-template-columns:1fr}}
+  .install h2{font-family:var(--serif);font-weight:300;font-size:clamp(32px,4.4vw,52px);line-height:1;letter-spacing:-.03em;margin:0 0 18px}
+  .install p{color:var(--paper-dim);font-size:16px;line-height:1.65;max-width:44ch}
+  .code-block{
+    background:#0a0907;
+    border:1px solid var(--line-strong);
+    border-radius:14px;padding:20px 22px;
+    font-family:var(--mono);font-size:14px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    position:relative;overflow:hidden;
+  }
+  .code-block::before{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(120deg, transparent 40%, rgba(233,195,139,.08) 50%, transparent 60%);
+    transform:translateX(-100%);
+    animation:sheen 4s ease-in-out infinite;
+  }
+  @keyframes sheen{50%,100%{transform:translateX(100%)}}
+  .code-block .prompt{color:var(--accent)}
+  .code-block .cmd{color:var(--paper)}
+  .copy-btn{
+    font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+    padding:7px 12px;border-radius:8px;
+    background:rgba(244,239,230,.06);
+    border:1px solid var(--line-strong);
+    color:var(--paper-dim);cursor:pointer;
+    transition:all .2s;flex-shrink:0;
+    z-index:1;position:relative;
+  }
+  .copy-btn:hover{background:rgba(244,239,230,.12);color:var(--paper)}
+  .alt-download{
+    margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+  }
+  .alt-download a{color:var(--paper-dim);text-decoration:none;border-bottom:1px dashed var(--line-strong)}
+  .alt-download a:hover{color:var(--accent)}
+
+  /* ——— FAQ ——— */
+  .faq{padding:120px 0}
+  .faq-list{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line)}
+  details{
+    border-bottom:1px solid var(--line);
+    padding:26px 0;
+  }
+  details summary{
+    cursor:pointer;list-style:none;
+    font-family:var(--serif);font-weight:400;font-size:clamp(19px,2vw,24px);
+    letter-spacing:-.01em;
+    display:flex;justify-content:space-between;align-items:center;gap:24px;
+    color:var(--paper);
+  }
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{
+    content:"＋";font-family:var(--serif);font-weight:300;
+    font-size:26px;color:var(--accent);
+    transition:transform .3s ease;flex-shrink:0;
+  }
+  details[open] summary::after{content:"—";transform:rotate(0deg)}
+  details p{color:var(--paper-dim);font-size:16px;line-height:1.7;max-width:62ch;margin:14px 0 0}
+
+  /* ——— Final CTA ——— */
+  .final{
+    padding:140px 0 120px;
+    text-align:center;position:relative;
+  }
+  .final::before{
+    content:"";position:absolute;inset:0;z-index:-1;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 60%, rgba(233,195,139,.15), transparent 70%),
+      radial-gradient(ellipse 50% 30% at 30% 30%, rgba(217,139,95,.1), transparent 70%);
+  }
+  .final h2{
+    font-family:var(--serif);font-weight:300;
+    font-size:clamp(42px,7vw,88px);line-height:.98;
+    letter-spacing:-.035em;
+    max-width:14ch;margin:0 auto 24px;
+  }
+  .final h2 em{font-style:italic;color:var(--accent)}
+  .final p{color:var(--paper-dim);font-size:17px;max-width:50ch;margin:0 auto 40px}
+
+  /* ——— Footer ——— */
+  footer{
+    border-top:1px solid var(--line);
+    padding:50px 0 40px;
+    color:var(--muted);font-size:13px;
+  }
+  footer .row{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  footer a{color:var(--paper-dim);text-decoration:none;margin-right:20px;transition:color .2s}
+  footer a:hover{color:var(--accent)}
+  footer .brand-mini{font-family:var(--serif);font-size:16px;color:var(--paper)}
+
+  /* ——— Scroll reveal ——— */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease, transform .9s cubic-bezier(.2,.7,.1,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  ::selection{background:var(--accent);color:var(--ink)}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap row">
+    <a href="#" class="brand">
+      <svg class="mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <path d="M12 6 H52 Q58 6 58 12 V52 Q58 58 52 58 H12 Q6 58 6 52 V12 Q6 6 12 6 Z M12 12 V52 H52 V12 Z" fill="#F4EFE6"/>
+        <path d="M32 20 A12 12 0 1 1 32 44 A12 12 0 1 1 32 20 Z M32 26 A6 6 0 1 0 32 38 A6 6 0 1 0 32 26 Z" fill="#F4EFE6" fill-rule="evenodd"/>
+        <path d="M44 14 L50 20 L26 44 L20 38 Z" fill="#E9C38B"/>
+      </svg>
+      <span><b>Better</b><i>Shot</i></span>
+    </a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/luongnv89/better-shot" class="btn-ghost" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap">
+    <span class="eyebrow reveal"><span class="pulse"></span>v0.2.7 · Free for macOS</span>
+    <h1 class="display reveal">One shortcut. A screenshot <em>worth sharing.</em></h1>
+    <p class="lede reveal">Capture, polish, and ship beautiful screenshots in under a minute — without leaving your Mac. Free, local, no account required.</p>
+
+    <div class="cta-row reveal">
+      <a class="btn btn-primary" href="#download">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25"/></svg>
+        Download for macOS
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/luongnv89/better-shot" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.87-1.54-3.87-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.47.11-3.07 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.18-1.18 3.18-1.18.63 1.6.23 2.78.12 3.07.74.8 1.19 1.83 1.19 3.09 0 4.43-2.69 5.41-5.25 5.69.41.35.78 1.05.78 2.12 0 1.53-.01 2.77-.01 3.15 0 .31.21.68.8.56C20.22 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/></svg>
+        Star on GitHub
+      </a>
+    </div>
+
+    <div class="trust-bar reveal">
+      <span>Open source</span>
+      <span>BSD-3 licensed</span>
+      <span>100% on-device</span>
+      <span>Apple Silicon + Intel</span>
+    </div>
+
+    <div class="mockup-stage reveal">
+      <div class="mockup-halo"></div>
+      <div class="mockup-frame">
+        <div class="mockup-chrome"><i></i><i></i><i></i></div>
+        <img src="../screenshot.png" alt="Better Shot editor showing a polished screenshot with background, shadow, and annotations" loading="eager" />
+      </div>
+      <div class="floating-chip chip-1"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd> to capture</div>
+      <div class="floating-chip chip-2">Saved to clipboard</div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM / SOLUTION -->
+<section class="split" id="features">
+  <div class="wrap">
+    <header class="section-head reveal">
+      <div>
+        <div class="section-num">§ 01 — The fix</div>
+        <h2 class="section-title">From <em>bug-report</em> screenshots to something you're proud to ship.</h2>
+      </div>
+    </header>
+
+    <div class="split-grid reveal">
+      <div>
+        <p style="font-family:var(--serif);font-weight:400;font-style:italic;font-size:22px;color:var(--paper);max-width:30ch;line-height:1.35;letter-spacing:-.01em">
+          You ship screenshots that look like bug reports.
+        </p>
+        <p>Raw captures. Harsh white edges. A stray desktop icon in the corner. You paste them into Slack, docs, or a tweet — and they undersell the work.</p>
+        <p>Fixing them means opening Figma, aligning shadows, fighting with gradients. Ten minutes later, you've lost your train of thought.</p>
+      </div>
+      <div>
+        <p style="font-family:var(--serif);font-weight:400;font-style:italic;font-size:22px;color:var(--accent);max-width:30ch;line-height:1.35;letter-spacing:-.01em">
+          Press ⌘⇧2. Drag. Done.
+        </p>
+        <p>Better Shot captures the region and opens the editor instantly. Pick a background, nudge the shadow, drop an arrow where it matters, and hit ⌘S.</p>
+        <p>The polished version is on your clipboard before you'd even have Figma open.</p>
+      </div>
+    </div>
+
+    <div class="features-grid reveal" style="margin-top:80px">
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l5-5 4 4 4-4 5 5"/></svg>
+        </div>
+        <h3>Backgrounds that don't look templated</h3>
+        <p>Mesh gradients, wallpapers, solid colors, transparency — or drop in your own image.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l10-10"/><path d="M17 17V7H7"/></svg>
+        </div>
+        <h3>Annotations where the eye goes first</h3>
+        <p>Arrows, circles, numbered callouts, text labels. Auto-incrementing badges for walkthroughs.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0.5 0.5 23 23" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v2m0 12v2m8-8h-2M6 12H4m12.24-5.66l-1.41 1.41M9.17 14.83l-1.41 1.41"/></svg>
+        </div>
+        <h3>Shadow &amp; depth, dialed in</h3>
+        <p>Tune corner radius, blur, noise, and padding from 0 (edge-to-edge) to 200px.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>
+        </div>
+        <h3>Keyboard-driven everything</h3>
+        <p>Save, copy, undo, redo, close. Shortcuts work even when Better Shot is hidden.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M3 15l4-4 4 4 3-3 7 7"/><circle cx="9" cy="9" r="1.5"/></svg>
+        </div>
+        <h3>Edit any image — not just captures</h3>
+        <p>Drag in a PNG, JPG, or existing screenshot and polish it the same way.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 4v6c0 5-3.5 9-9 10-5.5-1-9-5-9-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>Stays on your machine</h3>
+        <p>No account. No uploads. No telemetry. Screenshots never leave your Mac.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="wrap">
+    <header class="section-head reveal">
+      <div>
+        <div class="section-num">§ 02 — The flow</div>
+        <h2 class="section-title">Four steps. Thirty <em>seconds.</em></h2>
+      </div>
+    </header>
+
+    <div class="steps reveal">
+      <div class="step">
+        <h4>Press the shortcut</h4>
+        <p>From anywhere — even with Better Shot hidden in the menu bar.</p>
+        <div class="kbd-row"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd></div>
+      </div>
+      <div class="step">
+        <h4>Drag the region</h4>
+        <p>The editor opens the moment you release. No extra clicks.</p>
+      </div>
+      <div class="step">
+        <h4>Polish it</h4>
+        <p>Background, shadow, padding, arrows, numbered callouts, text.</p>
+      </div>
+      <div class="step">
+        <h4>Ship it</h4>
+        <p>Save to disk, or drop it straight onto your clipboard.</p>
+        <div class="kbd-row"><kbd>⌘S</kbd><kbd>⇧⌘C</kbd></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVACY -->
+<section class="privacy">
+  <div class="wrap">
+    <div class="privacy-inner noise-soft reveal">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 4v6c0 5-3.5 9-9 10-5.5-1-9-5-9-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      <h3>Everything stays on your Mac.</h3>
+      <p>No uploads. No account. No telemetry. Your screenshots — and whatever sensitive thing happens to be in them — never leave the device.</p>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="install" id="download">
+  <div class="wrap">
+    <div class="install-inner reveal">
+      <div>
+        <div class="section-num" style="margin-bottom:18px">§ 03 — Install</div>
+        <h2>Ready in <em style="font-style:italic;color:var(--accent)">thirty seconds.</em></h2>
+        <p>One command with Homebrew, or grab the DMG directly. macOS 10.15 or later.</p>
+      </div>
+      <div>
+        <div class="code-block">
+          <span><span class="prompt">$</span> <span class="cmd">brew install --cask bettershot</span></span>
+          <button class="copy-btn" onclick="navigator.clipboard.writeText('brew install --cask bettershot');this.textContent='Copied'">Copy</button>
+        </div>
+        <div class="alt-download">
+          <span>Or download:</span>
+          <a href="https://github.com/luongnv89/better-shot/releases" target="_blank" rel="noopener">Apple Silicon (.dmg)</a>
+          <a href="https://github.com/luongnv89/better-shot/releases" target="_blank" rel="noopener">Intel (.dmg)</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="wrap">
+    <header class="section-head reveal">
+      <div>
+        <div class="section-num">§ 04 — Questions</div>
+        <h2 class="section-title">Things people <em>ask first.</em></h2>
+      </div>
+    </header>
+    <div class="faq-list reveal">
+      <details open>
+        <summary>Is it really free?</summary>
+        <p>Yes. BSD-3 licensed, fully open source, no paid tier. Star the repo on GitHub if it saves you time — that's all we ask.</p>
+      </details>
+      <details>
+        <summary>Does it work on Intel Macs?</summary>
+        <p>Yes. Separate builds ship for Apple Silicon (M1 through M5) and Intel. Both are on the Releases page.</p>
+      </details>
+      <details>
+        <summary>Will it upload my screenshots anywhere?</summary>
+        <p>Never. Better Shot runs entirely on your Mac. No network calls, no account, no cloud sync, no telemetry.</p>
+      </details>
+      <details>
+        <summary>What about Windows or Linux?</summary>
+        <p>macOS 10.15 or later only, for now. A cross-platform version isn't on the roadmap — the app leans on macOS-native capture APIs.</p>
+      </details>
+      <details>
+        <summary>Can I edit images I didn't capture?</summary>
+        <p>Yes. Drag any PNG or JPG into the editor and apply the same backgrounds, shadows, and annotations.</p>
+      </details>
+      <details>
+        <summary>What permissions does it need?</summary>
+        <p>Only Screen Recording, which macOS requires for any screenshot tool. Grant it in System Settings → Privacy &amp; Security → Screen Recording on first launch.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final">
+  <div class="wrap reveal">
+    <h2>Stop shipping <em>raw</em> screenshots.</h2>
+    <p>Free forever. Installs in thirty seconds via Homebrew. Works the moment you press the shortcut.</p>
+    <div class="cta-row" style="justify-content:center">
+      <a class="btn btn-primary" href="#download">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25"/></svg>
+        Download for macOS
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/luongnv89/better-shot" target="_blank" rel="noopener">View source →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <div>
+      <span class="brand-mini"><b style="font-weight:500">Better</b><i style="color:var(--accent);font-weight:400">Shot</i></span>
+      <span style="margin-left:14px;color:var(--muted)">© 2026 · BSD-3 Licensed</span>
+    </div>
+    <div>
+      <a href="https://github.com/luongnv89/better-shot" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/luongnv89/better-shot/issues" target="_blank" rel="noopener">Issues</a>
+      <a href="https://github.com/luongnv89/better-shot/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/luongnv89/better-shot/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Minimal scroll reveal — CSS-driven, no libraries
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach((el, i) => {
+    el.style.transitionDelay = Math.min(i * 40, 300) + 'ms';
+    io.observe(el);
+  });
+
+  // Stagger the hero elements on load so the first screen feels alive
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.hero .reveal').forEach((el, i) => {
+      setTimeout(() => el.classList.add('in'), 80 + i * 110);
+    });
+  });
+</script>
+</body>
+</html>
