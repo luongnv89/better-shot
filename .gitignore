@@ -36,3 +36,6 @@ CLAUDE.md
 # Local-only release scripts (contain notary credentials / cert identities)
 scripts/
 .gstack/
+
+# README rewrite backup (kept local)
+README.backup.md
