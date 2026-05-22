@@ -17,6 +17,7 @@ interface AssetGridProps {
   selectedImage: string | null;
   backgroundType: string;
   expanded?: boolean;
+  uploadedImages?: string[];
   onImageSelect: (imageSrc: string) => void;
   onToggle?: () => void;
 }
@@ -25,10 +26,15 @@ export const AssetGrid = memo(function AssetGrid({
   categories,
   selectedImage,
   backgroundType,
+  uploadedImages,
   onImageSelect,
 }: AssetGridProps) {
-  const [activeCategory, setActiveCategory] = useState(categories[0]?.name || "");
-  const currentCategory = categories.find((cat) => cat.name === activeCategory);
+  const allCategories: AssetCategory[] = uploadedImages && uploadedImages.length > 0
+    ? [{ name: "Uploaded", assets: uploadedImages.map((src, i) => ({ id: `uploaded-${i}`, src, name: `Uploaded ${i + 1}` })) }, ...categories]
+    : categories;
+
+  const [activeCategory, setActiveCategory] = useState(allCategories[0]?.name || "");
+  const currentCategory = allCategories.find((cat) => cat.name === activeCategory);
 
   return (
     <div>
@@ -38,7 +44,7 @@ export const AssetGrid = memo(function AssetGrid({
       </div>
 
       {/* Category tabs */}
-      {categories.length > 1 && (
+      {allCategories.length > 1 && (
         <div style={{
           display: 'flex',
           gap: 4,
@@ -48,7 +54,7 @@ export const AssetGrid = memo(function AssetGrid({
           padding: 3,
           border: '1px solid oklch(0.22 0.009 250)',
         }}>
-          {categories.map((category) => (
+          {allCategories.map((category) => (
             <button
               key={category.name}
               onClick={() => setActiveCategory(category.name)}

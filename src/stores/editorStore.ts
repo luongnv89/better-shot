@@ -83,6 +83,9 @@ interface EditorState {
   // Transient state (not part of history)
   _isInitialized: boolean;
   _historyPaused: boolean;
+  
+  // Uploaded background images (data URLs loaded from settings store)
+  uploadedBackgroundImages: string[];
 }
 
 interface EditorActions {
@@ -167,6 +170,9 @@ interface EditorActions {
   pauseHistory: () => void;
   resumeHistory: () => void;
   
+  // Uploaded background images
+  setUploadedBackgroundImages: (images: string[]) => void;
+  
   // Reset
   reset: () => void;
 }
@@ -224,6 +230,7 @@ const INITIAL_STATE: EditorState = {
   future: [],
   _isInitialized: false,
   _historyPaused: false,
+  uploadedBackgroundImages: [],
 };
 
 const SETTINGS_STORE_NAME = "settings.json";
@@ -382,10 +389,12 @@ export const useEditorStore = create<EditorStore>()(
         try {
           const store = await Store.load(SETTINGS_STORE_NAME);
           const storedSettings = await store.get<PersistedEditorSettings>(PERSISTED_SETTINGS_KEY);
+          const uploaded = await store.get<string[]>("uploadedBackgroundImages");
 
           if (storedSettings) {
             set((state) => {
               state.settings = buildSettingsFromPersisted(storedSettings);
+              if (uploaded) state.uploadedBackgroundImages = uploaded;
               state._isInitialized = true;
             });
             return;
@@ -406,6 +415,7 @@ export const useEditorStore = create<EditorStore>()(
               const resolvedPath = resolveBackgroundPath(storedBg);
               state.settings.selectedImageSrc = resolvedPath;
             }
+            if (uploaded) state.uploadedBackgroundImages = uploaded;
             state._isInitialized = true;
           });
         } catch (err) {
@@ -852,6 +862,15 @@ export const useEditorStore = create<EditorStore>()(
       },
 
       // ========================================
+      // Uploaded background images
+      // ========================================
+      setUploadedBackgroundImages: (images) => {
+        set((state) => {
+          state.uploadedBackgroundImages = images;
+        });
+      },
+
+      // ========================================
       // Reset
       // ========================================
       reset: () => {
@@ -883,6 +902,9 @@ export const useImageOffset = () => useEditorStore((state) => state.settings.ima
 
 // Annotation selectors
 export const useAnnotations = () => useEditorStore((state) => state.annotations);
+
+// Uploaded background images selector
+export const useUploadedBackgroundImages = () => useEditorStore((state) => state.uploadedBackgroundImages);
 
 // History selectors
 export const useCanUndo = () => useEditorStore((state) => state.past.length > 0);
@@ -945,6 +967,7 @@ export const editorActions = {
   get pauseHistory() { return useEditorStore.getState().pauseHistory; },
   get resumeHistory() { return useEditorStore.getState().resumeHistory; },
   get reset() { return useEditorStore.getState().reset; },
+  get setUploadedBackgroundImages() { return useEditorStore.getState().setUploadedBackgroundImages; },
 };
 
 // Hook version - returns the stable actions object

@@ -13,6 +13,7 @@ export {
   useEditorActions,
   editorActions,
   clearPersistedEditorSettings,
+  useUploadedBackgroundImages,
 } from "./editorStore";
 
 export type { EditorStore, EditorSettings, ShadowSettings, BackgroundType } from "./editorStore";

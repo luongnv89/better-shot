@@ -29,6 +29,7 @@ import {
   useAnnotations,
   useCanUndo,
   useCanRedo,
+  useUploadedBackgroundImages,
   editorActions,
   clearPersistedEditorSettings,
 } from "@/stores";
@@ -74,6 +75,7 @@ export function ImageEditor({
   const annotations = useAnnotations();
   const canUndo = useCanUndo();
   const canRedo = useCanRedo();
+  const uploadedBackgroundImages = useUploadedBackgroundImages();
   const actions = editorActions;
 
   const [screenshotImage, setScreenshotImage] = useState<HTMLImageElement | null>(null);
@@ -597,6 +599,7 @@ export function ImageEditor({
                   selectedImage={settings.selectedImageSrc}
                   backgroundType={settings.backgroundType}
                   expanded={true}
+                  uploadedImages={uploadedBackgroundImages}
                   onImageSelect={actions.handleImageSelect}
                   onToggle={() => {}}
                 />
@@ -650,6 +653,7 @@ export function ImageEditor({
                             selectedImage={settings.macbookBackground.selectedImageSrc}
                             backgroundType={settings.macbookBackground.backgroundType}
                             expanded={true}
+                            uploadedImages={uploadedBackgroundImages}
                             onImageSelect={actions.handleMacbookImageSelect}
                             onToggle={() => {}}
                           />
