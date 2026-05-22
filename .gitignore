@@ -32,3 +32,6 @@ CLAUDE.md
 *.mobileprovision
 *.cer
 *.certSigningRequest
+
+# Local-only release scripts (contain notary credentials / cert identities)
+scripts/
