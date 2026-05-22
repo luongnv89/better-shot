@@ -1,5 +1,6 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { Upload } from "lucide-react";
 
 export interface Asset {
   id: string;
@@ -20,6 +21,7 @@ interface AssetGridProps {
   uploadedImages?: string[];
   onImageSelect: (imageSrc: string) => void;
   onToggle?: () => void;
+  onUpload?: (file: File) => void;
 }
 
 export const AssetGrid = memo(function AssetGrid({
@@ -28,7 +30,9 @@ export const AssetGrid = memo(function AssetGrid({
   backgroundType,
   uploadedImages,
   onImageSelect,
+  onUpload,
 }: AssetGridProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const allCategories: AssetCategory[] = uploadedImages && uploadedImages.length > 0
     ? [{ name: "Uploaded", assets: uploadedImages.map((src, i) => ({ id: `uploaded-${i}`, src, name: `Uploaded ${i + 1}` })) }, ...categories]
     : categories;
@@ -41,6 +45,42 @@ export const AssetGrid = memo(function AssetGrid({
       {/* Section header */}
       <div className="section-header">
         <span className="section-title">Wallpapers</span>
+        {onUpload && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUpload(file);
+                e.target.value = "";
+              }}
+              style={{ display: 'none' }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Upload background image"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '3px 8px',
+                borderRadius: 4,
+                fontSize: 10,
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                background: 'oklch(0.22 0.009 250)',
+                color: 'oklch(0.72 0.01 250)',
+                transition: 'background 0.12s ease',
+              }}
+            >
+              <Upload className="size-3" aria-hidden="true" />
+              Upload
+            </button>
+          </>
+        )}
       </div>
 
       {/* Category tabs */}
