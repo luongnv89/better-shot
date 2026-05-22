@@ -5,6 +5,19 @@ All notable changes to Better Shot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-22
+
+### Added
+
+- **Persistent custom background images**: Upload your own images from the editor's background selection panel — uploads persist across sessions via the settings store, so favorites stay one click away
+- **Neon-green brand identity**: Refreshed logo (selection brackets + 4-point spark on near-black ink), app accent color, Tauri app icons, and landing page all rebranded around the new neon mark
+- **Menu-bar template icon**: New monochrome `trayTemplate.png` loaded as a template image — macOS now auto-tints the menu-bar icon to match the system appearance (white on dark, black on light)
+
+### Changed
+
+- **Upload flow streamlined**: Removed the permission-grant dialog that preceded the file picker — clicking Upload now opens the picker directly while keeping the same sandboxing guarantees
+- **App accent dialed back for long sessions**: In-app primary green muted from vivid `oklch(0.87 0.30 142)` to a softer `oklch(0.72 0.18 142)`; brand/landing assets keep the bright `#00FF41` for marketing
+
 ## [0.2.8] - 2026-04-18
 
 ### Added
