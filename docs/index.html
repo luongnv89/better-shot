@@ -415,6 +415,65 @@
   details[open] summary::after{content:"—";transform:rotate(0deg)}
   details p{color:var(--paper-dim);font-size:16px;line-height:1.7;max-width:62ch;margin:14px 0 0}
 
+  /* ——— Changelog ——— */
+  .changelog{padding:120px 0}
+  .changelog .timeline{
+    position:relative;margin-top:60px;
+    padding-left:32px;
+    border-left:1px solid var(--line);
+  }
+  .changelog .release{
+    position:relative;padding:0 0 56px 0;
+  }
+  .changelog .release:last-child{padding-bottom:0}
+  .changelog .release::before{
+    content:"";position:absolute;left:-39px;top:6px;
+    width:14px;height:14px;border-radius:50%;
+    background:var(--ink);border:2px solid var(--accent);
+    box-shadow:0 0 12px rgba(0,255,65,.4);
+  }
+  .changelog .release.is-latest::before{
+    background:var(--accent);
+    box-shadow:0 0 18px rgba(0,255,65,.7);
+  }
+  .changelog .release-head{
+    display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .changelog .version{
+    font-family:var(--serif);font-size:clamp(22px,2.4vw,28px);
+    color:var(--paper);font-weight:500;letter-spacing:-.01em;
+  }
+  .changelog .version em{font-style:italic;color:var(--accent);font-weight:400}
+  .changelog .date{
+    font-family:var(--mono);font-size:12px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .changelog .tag-latest{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--ink);background:var(--accent);
+    padding:3px 10px;border-radius:3px;font-weight:600;
+  }
+  .changelog .group{margin:14px 0 4px}
+  .changelog .group-label{
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:8px;
+  }
+  .changelog ul{
+    list-style:none;padding:0;margin:0 0 4px 0;
+    color:var(--paper-dim);font-size:15px;line-height:1.7;
+  }
+  .changelog ul li{padding:4px 0;max-width:64ch}
+  .changelog ul li strong{color:var(--paper);font-weight:500}
+  .changelog .more{
+    display:inline-flex;align-items:center;gap:8px;
+    margin-top:32px;font-family:var(--mono);font-size:13px;
+    color:var(--paper-dim);text-decoration:none;
+    letter-spacing:.05em;transition:color .2s;
+  }
+  .changelog .more:hover{color:var(--accent)}
+  .changelog .more::after{content:"→";color:var(--accent)}
+
   /* ——— Final CTA ——— */
   .final{
     padding:140px 0 120px;
@@ -470,6 +529,7 @@
     <div class="links">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
+      <a href="#changelog">Changelog</a>
       <a href="#faq">FAQ</a>
       <a href="https://github.com/luongnv89/better-shot" class="btn-ghost" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
@@ -664,12 +724,88 @@
   </div>
 </section>
 
+<!-- CHANGELOG -->
+<section class="changelog" id="changelog">
+  <div class="wrap">
+    <header class="section-head reveal">
+      <div>
+        <div class="section-num">§ 04 — What's new</div>
+        <h2 class="section-title">Every release, <em>plain English.</em></h2>
+      </div>
+    </header>
+
+    <div class="timeline reveal">
+
+      <article class="release is-latest">
+        <div class="release-head">
+          <span class="version">v<em>0.3.0</em></span>
+          <span class="date">May 22, 2026</span>
+          <span class="tag-latest">Latest</span>
+        </div>
+        <div class="group">
+          <div class="group-label">Added</div>
+          <ul>
+            <li><strong>Persistent custom background images</strong> — upload your own images from the editor's background panel; they stick around between sessions.</li>
+            <li><strong>Neon-green brand identity</strong> — refreshed logo, app accent, Tauri app icons, and landing page around a new bracket-and-spark mark.</li>
+            <li><strong>Menu-bar template icon</strong> — auto-tints to match macOS appearance (white on dark, black on light) instead of a tiny colour glyph.</li>
+          </ul>
+        </div>
+        <div class="group">
+          <div class="group-label">Changed</div>
+          <ul>
+            <li><strong>Upload flow streamlined</strong> — removed the permission-grant dialog; the Upload button now opens the file picker directly.</li>
+            <li><strong>App accent dialled back</strong> — softer green in the editor for long sessions; brand assets keep the bright neon for marketing.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="release">
+        <div class="release-head">
+          <span class="version">v<em>0.2.8</em></span>
+          <span class="date">Apr 18, 2026</span>
+        </div>
+        <div class="group">
+          <div class="group-label">Added</div>
+          <ul>
+            <li><strong>Signed &amp; notarized builds</strong> — Apple Silicon and Intel DMGs are Developer ID signed, hardened-runtime, and notarized by Apple. No more "unidentified developer" warning on first launch.</li>
+            <li><strong>New brand identity</strong> — refreshed BetterShot logo across the app, Dock icon, README, and a new standalone landing page.</li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="release">
+        <div class="release-head">
+          <span class="version">v<em>0.2.7</em></span>
+          <span class="date">Apr 10, 2026</span>
+        </div>
+        <div class="group">
+          <div class="group-label">Added</div>
+          <ul>
+            <li><strong>Device frames for screenshots</strong> — wrap captures in iPhone or MacBook frames for polished presentations.</li>
+            <li><strong>Global shortcut</strong> — press ⌘⇧B from anywhere to bring BetterShot to the foreground.</li>
+          </ul>
+        </div>
+        <div class="group">
+          <div class="group-label">Fixed</div>
+          <ul>
+            <li>MacBook frame proportions reworked to a full laptop silhouette.</li>
+            <li>iPhone frame layout corrected to wrap the screenshot properly.</li>
+          </ul>
+        </div>
+      </article>
+
+    </div>
+
+    <a class="more" href="https://github.com/luongnv89/better-shot/blob/main/CHANGELOG.md" target="_blank" rel="noopener">View full changelog on GitHub</a>
+  </div>
+</section>
+
 <!-- FAQ -->
 <section class="faq" id="faq">
   <div class="wrap">
     <header class="section-head reveal">
       <div>
-        <div class="section-num">§ 04 — Questions</div>
+        <div class="section-num">§ 05 — Questions</div>
         <h2 class="section-title">Things people <em>ask first.</em></h2>
       </div>
     </header>
