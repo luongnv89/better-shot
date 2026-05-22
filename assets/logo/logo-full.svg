@@ -1,11 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" fill="none">
-  <title>BetterShot</title>
+<svg viewBox="0 0 320 72" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BetterShot logo">
+  <!-- Mark (64x64) positioned at left, vertically centered (y=4) -->
   <g transform="translate(4 4)">
-    <path d="M12 6 H52 Q58 6 58 12 V52 Q58 58 52 58 H12 Q6 58 6 52 V12 Q6 6 12 6 Z M12 12 V52 H52 V12 Z" fill="#0B0A08"/>
-    <path d="M32 20 A12 12 0 1 1 32 44 A12 12 0 1 1 32 20 Z M32 26 A6 6 0 1 0 32 38 A6 6 0 1 0 32 26 Z" fill="#0B0A08" fill-rule="evenodd"/>
-    <path d="M44 14 L50 20 L26 44 L20 38 Z" fill="#D98B5F"/>
+    <rect width="64" height="64" rx="14" fill="#0A0A0A"/>
+    <path d="M14 22 L14 14 L22 14" fill="none" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M42 14 L50 14 L50 22" fill="none" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M50 42 L50 50 L42 50" fill="none" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22 50 L14 50 L14 42" fill="none" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M32 22 L34 30 L42 32 L34 34 L32 42 L30 34 L22 32 L30 30 Z" fill="#00FF41"/>
+    <circle cx="32" cy="32" r="2" fill="#0A0A0A"/>
   </g>
-  <g font-family="'Fraunces', Georgia, serif" font-weight="500" letter-spacing="-0.02em">
-    <text x="84" y="47" font-size="30" fill="#0B0A08">Better<tspan fill="#D98B5F" font-style="italic" font-weight="400">Shot</tspan></text>
-  </g>
+
+  <!-- Wordmark: BetterShot -->
+  <text x="84" y="47"
+        font-family="Inter, -apple-system, 'SF Pro Display', system-ui, sans-serif"
+        font-size="30" font-weight="700" letter-spacing="-0.5"
+        fill="#0A0A0A">Better<tspan fill="#00FF41" font-weight="800">Shot</tspan></text>
 </svg>

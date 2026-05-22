@@ -118,13 +118,13 @@ export function RegionSelector({ onSelect, onCancel, monitorShots }: RegionSelec
           ctx.fillRect(0, y + height, bounds.width, bounds.height - y - height);
 
           // Selection border
-          ctx.strokeStyle = "#3b82f6";
+          ctx.strokeStyle = "#00FF41";
           ctx.lineWidth = 2;
           ctx.strokeRect(x, y, width, height);
 
           // Corner handles
           const handleSize = 6;
-          ctx.fillStyle = "#3b82f6";
+          ctx.fillStyle = "#00FF41";
           const corners = [
             [x - handleSize/2, y - handleSize/2],
             [x + width - handleSize/2, y - handleSize/2],

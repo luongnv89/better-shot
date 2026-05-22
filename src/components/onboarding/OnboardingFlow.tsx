@@ -16,7 +16,7 @@ const ONBOARDING_STEPS = [
     description:
       "Your open-source alternative to CleanShot X. Let's get you started with a quick tour of the app.",
     icon: (
-      <svg className="size-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="size-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -31,7 +31,7 @@ const ONBOARDING_STEPS = [
     title: "Capture Modes",
     description: "Better Shot offers three ways to capture your screen, each with a handy keyboard shortcut.",
     icon: (
-      <svg className="size-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="size-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -51,7 +51,7 @@ const ONBOARDING_STEPS = [
         <div className="grid grid-cols-3 gap-3">
           <div className="p-4 bg-secondary rounded-lg border border-border">
             <div className="flex flex-col items-center gap-2">
-              <svg className="size-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="size-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -67,7 +67,7 @@ const ONBOARDING_STEPS = [
           </div>
           <div className="p-4 bg-secondary rounded-lg border border-border">
             <div className="flex flex-col items-center gap-2">
-              <svg className="size-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="size-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -83,7 +83,7 @@ const ONBOARDING_STEPS = [
           </div>
           <div className="p-4 bg-secondary rounded-lg border border-border">
             <div className="flex flex-col items-center gap-2">
-              <svg className="size-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="size-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -135,7 +135,7 @@ const ONBOARDING_STEPS = [
     title: "Image Editor",
     description: "Edit your screenshots with backgrounds, effects, and annotations.",
     icon: (
-      <svg className="size-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="size-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -166,7 +166,7 @@ const ONBOARDING_STEPS = [
     title: "Settings & Preferences",
     description: "Fine-tune how captures behave. Access these options anytime from the gear icon.",
     icon: (
-      <svg className="size-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="size-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"

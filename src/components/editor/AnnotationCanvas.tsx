@@ -432,7 +432,7 @@ export const AnnotationCanvas = memo(function AnnotationCanvas({
       const baseSize = isLineOrArrow ? LINE_HANDLE_SIZE : HANDLE_SIZE;
       const hoverSize = isLineOrArrow ? LINE_HANDLE_SIZE + 4 : HANDLE_HOVER_SIZE;
       const size = (isHovered || isActive) ? hoverSize : baseSize;
-      const fillColor = isControl ? "#10b981" : (isActive ? "#2563eb" : "#3b82f6");
+      const fillColor = isControl ? "#10b981" : (isActive ? "#2563eb" : "#00FF41");
       
       ctx.save();
       
@@ -480,7 +480,7 @@ export const AnnotationCanvas = memo(function AnnotationCanvas({
 
       if (isSelected && annotation.type !== "blur") {
         ctx.save();
-        ctx.strokeStyle = "#3b82f6";
+        ctx.strokeStyle = "#00FF41";
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         

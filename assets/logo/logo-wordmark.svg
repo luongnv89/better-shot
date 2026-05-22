@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="none">
-  <title>BetterShot</title>
-  <g font-family="'Fraunces', Georgia, serif" font-weight="500" letter-spacing="-0.02em">
-    <text x="4" y="29" font-size="28" fill="#0B0A08">Better<tspan fill="#D98B5F" font-style="italic" font-weight="400">Shot</tspan></text>
-  </g>
+<svg viewBox="0 0 220 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BetterShot wordmark">
+  <text x="0" y="30"
+        font-family="Inter, -apple-system, 'SF Pro Display', system-ui, sans-serif"
+        font-size="28" font-weight="700" letter-spacing="-0.5"
+        fill="#0A0A0A">Better<tspan fill="#00FF41" font-weight="800">Shot</tspan></text>
 </svg>

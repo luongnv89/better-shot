@@ -1,9 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
   <title>BetterShot</title>
-  <!-- Simplified capture frame (proportional to canonical 64x64 mark) -->
-  <path d="M3 1.5 H13 Q14.5 1.5 14.5 3 V13 Q14.5 14.5 13 14.5 H3 Q1.5 14.5 1.5 13 V3 Q1.5 1.5 3 1.5 Z M3 3 V13 H13 V3 Z" fill="#F4EFE6"/>
-  <!-- Aperture dot (simplified — solid circle instead of ring at 16px) -->
-  <circle cx="8" cy="8" r="2.5" fill="#F4EFE6"/>
-  <!-- Spark accent -->
-  <path d="M11 2.5 L13.5 5 L6.5 12 L4 9.5 Z" fill="#E9C38B"/>
+  <rect width="16" height="16" rx="3" fill="#0A0A0A"/>
+  <path d="M8 3 L9 7 L13 8 L9 9 L8 13 L7 9 L3 8 L7 7 Z" fill="#00FF41"/>
 </svg>
