@@ -1,13 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { migrateStoredValue, isAssetId, isDataUrl } from "@/lib/asset-registry";
 import { hasCompletedOnboarding } from "@/lib/onboarding";
 import { invoke } from "@tauri-apps/api/core";
@@ -458,19 +450,7 @@ function App() {
     }
   }, []);
 
-  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
-
-  const handleUploadButtonClick = useCallback(() => {
-    setIsPermissionDialogOpen(true);
-  }, []);
-
-  const handlePermissionDialogClose = useCallback(() => {
-    if (!isSelectingFile) {
-      setIsPermissionDialogOpen(false);
-    }
-  }, [isSelectingFile]);
-
-  const handlePermissionDialogConfirm = useCallback(async () => {
+  const handleUploadButtonClick = useCallback(async () => {
     if (isSelectingFile) return;
 
     setError(null);
@@ -480,7 +460,7 @@ function App() {
       const selected = await invoke<string | null>("open_image_file_dialog");
 
       if (!selected) {
-        setIsPermissionDialogOpen(false);
+        setIsSelectingFile(false);
         return;
       }
 
@@ -491,7 +471,6 @@ function App() {
       setTempScreenshotPath(sandboxedPath);
       setMode("editing");
       await restoreWindow();
-      setIsPermissionDialogOpen(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(errorMessage);
@@ -503,6 +482,7 @@ function App() {
       setIsSelectingFile(false);
     }
   }, [isSelectingFile]);
+
 
   async function handleEditorSave(editedImageData: string, filenameOverride?: string) {
     try {
@@ -752,49 +732,7 @@ function App() {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={isPermissionDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              handlePermissionDialogClose();
-            } else {
-              setIsPermissionDialogOpen(true);
-            }
-          }}
-      >
-        <DialogContent className="max-w-lg rounded-lg space-y-4">
-          <DialogHeader>
-            <DialogTitle className="text-lg text-foreground text-balance">Grant photo access</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground text-pretty">
-              Better Shot needs to copy the photo into a secure temporary folder ($TEMP/bettershot) so it can safely render it in the editor without needing permanent access to the original directory.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 text-sm text-muted-foreground text-pretty">
-            <p>We will:</p>
-            <ul className="list-disc list-inside">
-              <li>Ask you to pick the photo via Finder.</li>
-              <li>Copy it into a sandboxed temp folder that is already trusted.</li>
-              <li>Open the copied file inside the editor and delete it once you close the session.</li>
-            </ul>
-          </div>
-          <DialogFooter className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              onClick={handlePermissionDialogClose}
-              disabled={isSelectingFile}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="cta"
-              onClick={handlePermissionDialogConfirm}
-              disabled={isSelectingFile}
-            >
-              {isSelectingFile ? "Opening picker…" : "Grant access & pick photo"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
       </div>
     </main>
     </>
