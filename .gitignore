@@ -35,3 +35,4 @@ CLAUDE.md
 
 # Local-only release scripts (contain notary credentials / cert identities)
 scripts/
+.gstack/
