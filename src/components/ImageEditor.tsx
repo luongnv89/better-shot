@@ -24,11 +24,13 @@ import { ExportSettingsPanel } from "./editor/ExportSettingsPanel";
 import { Annotation, ToolType } from "@/types/annotations";
 import { usePreviewGenerator } from "@/hooks/usePreviewGenerator";
 import { assetCategories } from "@/hooks/useEditorSettings";
+import { Store } from "@tauri-apps/plugin-store";
 import {
   useSettings,
   useAnnotations,
   useCanUndo,
   useCanRedo,
+  useUploadedBackgroundImages,
   editorActions,
   clearPersistedEditorSettings,
 } from "@/stores";
@@ -74,6 +76,7 @@ export function ImageEditor({
   const annotations = useAnnotations();
   const canUndo = useCanUndo();
   const canRedo = useCanRedo();
+  const uploadedBackgroundImages = useUploadedBackgroundImages();
   const actions = editorActions;
 
   const [screenshotImage, setScreenshotImage] = useState<HTMLImageElement | null>(null);
@@ -197,6 +200,30 @@ export function ImageEditor({
       toast.error("Unable to open directory picker");
     }
   }, [saveDir, onSaveDirChange]);
+
+  const handleBackgroundUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const dataUrl = reader.result as string;
+      const updated = [...uploadedBackgroundImages, dataUrl];
+      editorActions.setUploadedBackgroundImages(updated);
+      try {
+        const store = await Store.load("settings.json");
+        await store.set("uploadedBackgroundImages", updated);
+        await store.save();
+        toast.success("Image uploaded");
+      } catch (err) {
+        console.error("Failed to save uploaded image:", err);
+        toast.error("Failed to save uploaded image");
+      }
+    };
+    reader.onerror = () => toast.error("Failed to read image file");
+    reader.readAsDataURL(file);
+  }, [uploadedBackgroundImages]);
 
   const handleResetToDefaults = useCallback(async () => {
     if (isResettingConfig) return;
@@ -597,8 +624,10 @@ export function ImageEditor({
                   selectedImage={settings.selectedImageSrc}
                   backgroundType={settings.backgroundType}
                   expanded={true}
+                  uploadedImages={uploadedBackgroundImages}
                   onImageSelect={actions.handleImageSelect}
                   onToggle={() => {}}
+                  onUpload={handleBackgroundUpload}
                 />
                 {settings.frameType === "macbook" && (
                   <>
@@ -650,8 +679,10 @@ export function ImageEditor({
                             selectedImage={settings.macbookBackground.selectedImageSrc}
                             backgroundType={settings.macbookBackground.backgroundType}
                             expanded={true}
+                            uploadedImages={uploadedBackgroundImages}
                             onImageSelect={actions.handleMacbookImageSelect}
                             onToggle={() => {}}
+                            onUpload={handleBackgroundUpload}
                           />
                         </>
                       )}
