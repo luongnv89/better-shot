@@ -11,9 +11,9 @@
 
 # One shortcut. A screenshot worth sharing.
 
-Better Shot captures your screen and opens it in an editor — add a background, shadow, and annotations before you share. Free, local, no account required.
+BetterShot captures your screen and opens it in an editor — add a background, shadow, and annotations before you share. Free, local, no account required.
 
-<img width="3600" height="2025" alt="Better Shot editor" src="./screenshot.png" />
+<img width="3456" height="2234" alt="BetterShot editor — neon-green theme with background and wallpaper panels" src="./assets/screenshot.png" />
 
 [**Download for macOS →**](#download)
 
@@ -21,9 +21,9 @@ Better Shot captures your screen and opens it in an editor — add a background,
 
 ## Before and after
 
-Without Better Shot, you paste a raw screenshot into a message or doc — sharp edges, white background, no context.
+Without BetterShot, you paste a raw screenshot into a message or doc — sharp edges, white background, no context.
 
-With Better Shot, the same capture gets a polished background, soft shadow, and optional callout arrows in under a minute.
+With BetterShot, the same capture gets a polished background, soft shadow, and optional callout arrows in under a minute.
 
 ---
 
@@ -74,7 +74,7 @@ One shortcut triggers everything. The editor opens immediately — no extra clic
 | Capture a window | `⌘⇧D` (enable in Preferences) |
 | Cancel | `Esc` |
 
-Shortcuts work from anywhere — even when Better Shot is hidden in the menu bar.
+Shortcuts work from anywhere — even when BetterShot is hidden in the menu bar.
 
 ### In the editor
 
@@ -103,9 +103,9 @@ Go to [Releases](https://github.com/luongnv89/better-shot/releases) and pick:
 - **Apple Silicon** (M1/M2/M3/M4/M5): `bettershot_*_aarch64.dmg`
 - **Intel Mac**: `bettershot_*_x64.dmg`
 
-Open the DMG, drag Better Shot to Applications, and launch it.
+Open the DMG, drag BetterShot to Applications, and launch it.
 
-**First launch:** macOS will ask for Screen Recording permission. Go to System Settings → Privacy & Security → Screen Recording and enable Better Shot. Restart the app once.
+**First launch:** macOS will ask for Screen Recording permission. Go to System Settings → Privacy & Security → Screen Recording and enable BetterShot. Restart the app once.
 
 **Requirements:** macOS 10.15 or later.
 
