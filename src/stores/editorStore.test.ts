@@ -220,6 +220,67 @@ describe("editorStore - padding feature", () => {
   });
 });
 
+describe("editorStore - uploaded background images", () => {
+  beforeEach(() => {
+    act(() => {
+      editorActions.reset();
+    });
+  });
+
+  it("should start with an empty list of uploaded images", () => {
+    const state = useEditorStore.getState();
+    expect(state.uploadedBackgroundImages).toEqual([]);
+  });
+
+  it("should update uploaded images via setUploadedBackgroundImages", () => {
+    const images = ["data:image/png;base64,abc123", "data:image/jpeg;base64,def456"];
+
+    act(() => {
+      editorActions.setUploadedBackgroundImages(images);
+    });
+
+    const state = useEditorStore.getState();
+    expect(state.uploadedBackgroundImages).toEqual(images);
+  });
+
+  it("should be reset when store is reset", () => {
+    act(() => {
+      editorActions.setUploadedBackgroundImages(["data:image/png;base64,test"]);
+    });
+
+    expect(useEditorStore.getState().uploadedBackgroundImages).toHaveLength(1);
+
+    act(() => {
+      editorActions.reset();
+    });
+
+    expect(useEditorStore.getState().uploadedBackgroundImages).toEqual([]);
+  });
+
+  it("should not affect other settings when setting uploaded images", () => {
+    const initialPadding = useEditorStore.getState().settings.padding;
+
+    act(() => {
+      editorActions.setUploadedBackgroundImages(["data:image/png;base64,test"]);
+    });
+
+    const state = useEditorStore.getState();
+    expect(state.settings.padding).toBe(initialPadding);
+    expect(state.uploadedBackgroundImages).toHaveLength(1);
+  });
+
+  it("should be included in the useUploadedBackgroundImages selector", () => {
+    const { result } = renderHook(() => useEditorStore((s) => s.uploadedBackgroundImages));
+    expect(result.current).toEqual([]);
+
+    act(() => {
+      editorActions.setUploadedBackgroundImages(["data:image/webp;base64,xyz789"]);
+    });
+
+    expect(result.current).toEqual(["data:image/webp;base64,xyz789"]);
+  });
+});
+
 describe("editorStore - macbook display background", () => {
   beforeEach(() => {
     act(() => {
