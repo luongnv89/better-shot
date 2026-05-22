@@ -85,9 +85,21 @@
 
   /* ——— Hero ——— */
   .hero{
-    padding:90px 0 40px;
+    padding:90px 0 60px;
     position:relative;
     isolation:isolate;
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+    gap:60px;
+    align-items:center;
+  }
+  .hero-content{display:flex;flex-direction:column;align-items:flex-start}
+  @media (max-width:980px){
+    .hero-grid{grid-template-columns:1fr;gap:48px}
+    .hero-content{order:2;align-items:flex-start}
+    .mockup-stage{order:1}
   }
   .hero-bg{
     position:absolute;inset:-20% -10% 0 -10%;z-index:-1;pointer-events:none;
@@ -119,11 +131,11 @@
   h1.display{
     font-family:var(--serif);
     font-weight:300;
-    font-size:clamp(44px, 8.2vw, 108px);
-    line-height:.95;
+    font-size:clamp(44px, 6.4vw, 88px);
+    line-height:.98;
     letter-spacing:-.035em;
     margin:24px 0 24px;
-    max-width:14ch;
+    max-width:16ch;
   }
   h1.display em{
     font-style:italic;
@@ -174,7 +186,7 @@
 
   /* ——— Hero mockup ——— */
   .mockup-stage{
-    margin-top:70px;position:relative;
+    position:relative;
     perspective:2400px;
   }
   .mockup-frame{
@@ -184,11 +196,11 @@
     padding:10px;
     border:1px solid var(--line-strong);
     box-shadow:var(--shadow-deep);
-    transform:rotateX(6deg) rotateZ(-.4deg);
-    transform-origin:center top;
+    transform:rotateY(-4deg) rotateX(2deg) rotateZ(-.3deg);
+    transform-origin:center;
     transition:transform .8s cubic-bezier(.2,.7,.1,1);
   }
-  .mockup-frame:hover{transform:rotateX(2deg) rotateZ(0deg)}
+  .mockup-frame:hover{transform:rotateY(-1deg) rotateX(0deg) rotateZ(0deg)}
   .mockup-chrome{
     display:flex;gap:7px;padding:10px 14px;
   }
@@ -540,36 +552,40 @@
 <section class="hero">
   <div class="hero-bg"></div>
   <div class="wrap">
-    <span class="eyebrow reveal"><span class="pulse"></span>v0.3.0 · Free for macOS</span>
-    <h1 class="display reveal">One shortcut. A screenshot <em>worth sharing.</em></h1>
-    <p class="lede reveal">Capture, polish, and ship beautiful screenshots in under a minute — without leaving your Mac. Free, local, no account required.</p>
+    <div class="hero-grid">
+      <div class="hero-content">
+        <span class="eyebrow reveal"><span class="pulse"></span>v0.3.0 · Free for macOS</span>
+        <h1 class="display reveal">One shortcut. A screenshot <em>worth sharing.</em></h1>
+        <p class="lede reveal">Capture, polish, and ship beautiful screenshots in under a minute — without leaving your Mac. Free, local, no account required.</p>
 
-    <div class="cta-row reveal">
-      <a class="btn btn-primary" href="#download">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25"/></svg>
-        Download for macOS
-      </a>
-      <a class="btn btn-secondary" href="https://github.com/luongnv89/better-shot" target="_blank" rel="noopener">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.87-1.54-3.87-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.47.11-3.07 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.18-1.18 3.18-1.18.63 1.6.23 2.78.12 3.07.74.8 1.19 1.83 1.19 3.09 0 4.43-2.69 5.41-5.25 5.69.41.35.78 1.05.78 2.12 0 1.53-.01 2.77-.01 3.15 0 .31.21.68.8.56C20.22 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/></svg>
-        Star on GitHub
-      </a>
-    </div>
+        <div class="cta-row reveal">
+          <a class="btn btn-primary" href="#download">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09M12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25"/></svg>
+            Download for macOS
+          </a>
+          <a class="btn btn-secondary" href="https://github.com/luongnv89/better-shot" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.69-3.87-1.54-3.87-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.47.11-3.07 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.18-1.18 3.18-1.18.63 1.6.23 2.78.12 3.07.74.8 1.19 1.83 1.19 3.09 0 4.43-2.69 5.41-5.25 5.69.41.35.78 1.05.78 2.12 0 1.53-.01 2.77-.01 3.15 0 .31.21.68.8.56C20.22 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/></svg>
+            Star on GitHub
+          </a>
+        </div>
 
-    <div class="trust-bar reveal">
-      <span>Open source</span>
-      <span>BSD-3 licensed</span>
-      <span>100% on-device</span>
-      <span>Apple Silicon + Intel</span>
-    </div>
-
-    <div class="mockup-stage reveal">
-      <div class="mockup-halo"></div>
-      <div class="mockup-frame">
-        <div class="mockup-chrome"><i></i><i></i><i></i></div>
-        <img src="./assets/screenshot.png" alt="BetterShot editor on macOS — neon-green theme, sidebar with gradient and wallpaper backgrounds, hero image showcasing the new BetterShot logo" loading="eager" />
+        <div class="trust-bar reveal">
+          <span>Open source</span>
+          <span>BSD-3 licensed</span>
+          <span>100% on-device</span>
+          <span>Apple Silicon + Intel</span>
+        </div>
       </div>
-      <div class="floating-chip chip-1"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd> to capture</div>
-      <div class="floating-chip chip-2">Saved to clipboard</div>
+
+      <div class="mockup-stage reveal">
+        <div class="mockup-halo"></div>
+        <div class="mockup-frame">
+          <div class="mockup-chrome"><i></i><i></i><i></i></div>
+          <img src="./assets/screenshot.png" alt="BetterShot editor on macOS — neon-green theme, sidebar with gradient and wallpaper backgrounds, hero image showcasing the new BetterShot logo" loading="eager" />
+        </div>
+        <div class="floating-chip chip-1"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd> to capture</div>
+        <div class="floating-chip chip-2">Saved to clipboard</div>
+      </div>
     </div>
   </div>
 </section>
