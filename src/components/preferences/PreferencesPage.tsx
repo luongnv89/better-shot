@@ -131,7 +131,7 @@ export function PreferencesPage({ onBack, onSettingsChange }: PreferencesPagePro
                 value={settings.saveDir}
                 onChange={(e) => updateSetting("saveDir", e.target.value)}
                 placeholder="Enter save directory path (e.g., ~/Desktop)"
-                className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-mono text-sm"
+                className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm"
               />
               <p className="text-xs text-foreground0">Screenshots will be saved to this directory</p>
             </div>
@@ -147,7 +147,7 @@ export function PreferencesPage({ onBack, onSettingsChange }: PreferencesPagePro
                 value={settings.filenamePrefix}
                 onChange={(e) => updateSetting("filenamePrefix", e.target.value)}
                 placeholder="bettershot"
-                className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-mono text-sm"
+                className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm"
               />
               <p className="text-xs text-foreground0 text-pretty">Used when naming saved screenshots and exports (prefix + timestamp).</p>
             </div>

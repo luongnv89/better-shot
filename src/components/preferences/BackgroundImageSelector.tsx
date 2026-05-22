@@ -221,7 +221,7 @@ export function BackgroundImageSelector({ onImageSelect }: BackgroundImageSelect
                 className={cn(
                   "size-10 rounded-lg transition-all",
                   backgroundType === type
-                    ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-card"
+                    ? "ring-2 ring-primary ring-offset-2 ring-offset-card"
                     : "ring-1 ring-border hover:ring-ring"
                 )}
                 style={{ backgroundColor: color }}
@@ -235,7 +235,7 @@ export function BackgroundImageSelector({ onImageSelect }: BackgroundImageSelect
                 className={cn(
                   "size-10 rounded-lg transition-all",
                   backgroundType === "custom"
-                    ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-card"
+                    ? "ring-2 ring-primary ring-offset-2 ring-offset-card"
                     : "ring-1 ring-border hover:ring-ring"
                 )}
                 style={{ backgroundColor: customColor }}
@@ -260,7 +260,7 @@ export function BackgroundImageSelector({ onImageSelect }: BackgroundImageSelect
               className={cn(
                 "size-10 rounded-lg transition-all bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImNoZWNrZXJib2FyZCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjZmZmIi8+PHJlY3QgeD0iNSIgd2lkdGg9IjUiIGhlaWdodD0iNSIgZmlsbD0iI2UwZTBlMCIvPjxyZWN0IHk9IjUiIHdpZHRoPSI1IiBoZWlnaHQ9IjUiIGZpbGw9IiNlMGUwZTAiLz48cmVjdCB4PSI1IiB5PSI1IiB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjZmZmIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIGZpbGw9InVybCgjY2hlY2tlcmJvYXJkKSIvPjwvc3ZnPg==')]",
                 backgroundType === "transparent"
-                  ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-card"
+                  ? "ring-2 ring-primary ring-offset-2 ring-offset-card"
                   : ""
               )}
               title="Transparent"
@@ -280,7 +280,7 @@ export function BackgroundImageSelector({ onImageSelect }: BackgroundImageSelect
                       className={cn(
                         "relative w-full aspect-square rounded-lg overflow-hidden border-2 transition-all",
                         backgroundType === "image" && isSelected(img)
-                          ? "border-blue-500 ring-2 ring-blue-500/50"
+                          ? "border-primary ring-2 ring-primary/50"
                           : "border-border hover:border-ring"
                       )}
                     >
@@ -290,8 +290,8 @@ export function BackgroundImageSelector({ onImageSelect }: BackgroundImageSelect
                         className="w-full h-full object-cover"
                       />
                       {backgroundType === "image" && isSelected(img) && (
-                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                          <Check className="size-5 text-blue-400" aria-hidden="true" />
+                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                          <Check className="size-5 text-primary" aria-hidden="true" />
                         </div>
                       )}
                     </button>
@@ -319,7 +319,7 @@ export function BackgroundImageSelector({ onImageSelect }: BackgroundImageSelect
                     className={cn(
                       "relative w-full aspect-square rounded-lg overflow-hidden border-2 transition-all",
                       backgroundType === "image" && isSelected(asset.src)
-                        ? "border-blue-500 ring-2 ring-blue-500/50"
+                        ? "border-primary ring-2 ring-primary/50"
                         : "border-border hover:border-ring"
                     )}
                   >
@@ -329,8 +329,8 @@ export function BackgroundImageSelector({ onImageSelect }: BackgroundImageSelect
                       className="w-full h-full object-cover"
                     />
                     {backgroundType === "image" && isSelected(asset.src) && (
-                      <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                        <Check className="size-5 text-blue-400" aria-hidden="true" />
+                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                        <Check className="size-5 text-primary" aria-hidden="true" />
                       </div>
                     )}
                   </button>

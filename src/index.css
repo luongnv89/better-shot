@@ -9,8 +9,8 @@
   --card-foreground: oklch(0.93 0.008 250);
   --popover: oklch(0.19 0.01 250);
   --popover-foreground: oklch(0.93 0.008 250);
-  --primary: oklch(0.65 0.18 255);
-  --primary-foreground: oklch(1 0 0);
+  --primary: oklch(0.72 0.18 142);
+  --primary-foreground: oklch(0.135 0.008 250);
   --secondary: oklch(0.22 0.009 250);
   --secondary-foreground: oklch(0.82 0.01 250);
   --muted: oklch(0.20 0.008 250);
@@ -21,20 +21,20 @@
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.26 0.009 250);
   --input: oklch(0.22 0.009 250);
-  --ring: oklch(0.65 0.18 255);
+  --ring: oklch(0.72 0.18 142);
 
   /* Sidebar specific */
   --sidebar: oklch(0.155 0.008 250);
   --sidebar-foreground: oklch(0.93 0.008 250);
-  --sidebar-primary: oklch(0.65 0.18 255);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.72 0.18 142);
+  --sidebar-primary-foreground: oklch(0.135 0.008 250);
   --sidebar-accent: oklch(0.22 0.009 250);
   --sidebar-accent-foreground: oklch(0.90 0.01 250);
   --sidebar-border: oklch(0.22 0.009 250);
-  --sidebar-ring: oklch(0.65 0.18 255);
+  --sidebar-ring: oklch(0.72 0.18 142);
 
   /* Chart colors */
-  --chart-1: oklch(0.65 0.18 255);
+  --chart-1: oklch(0.72 0.18 142);
   --chart-2: oklch(0.60 0.20 290);
   --chart-3: oklch(0.58 0.19 220);
   --chart-4: oklch(0.62 0.17 180);
@@ -165,7 +165,7 @@ input[type="number"] {
 
 /* ─── Focus ring ─── */
 :focus-visible {
-  outline: 2px solid oklch(0.65 0.18 255 / 0.6);
+  outline: 2px solid oklch(0.72 0.18 142 / 0.6);
   outline-offset: 1px;
 }
 
@@ -174,7 +174,7 @@ input[type="number"] {
   width: 14px;
   height: 14px;
   background: white;
-  border: 2px solid oklch(0.65 0.18 255);
+  border: 2px solid oklch(0.72 0.18 142);
   box-shadow: 0 1px 4px oklch(0 0 0 / 0.5);
   transition: transform 0.1s ease;
 }
@@ -187,7 +187,7 @@ input[type="number"] {
   border-radius: 2px;
 }
 .studio-slider [data-slot="slider-range"] {
-  background: oklch(0.65 0.18 255);
+  background: oklch(0.72 0.18 142);
   border-radius: 2px;
 }
 
@@ -214,8 +214,8 @@ input[type="number"] {
   color: oklch(0.75 0.01 250);
 }
 .tab-nav-btn.active {
-  background: oklch(0.65 0.18 255 / 0.12);
-  color: oklch(0.75 0.18 255);
+  background: oklch(0.72 0.18 142 / 0.12);
+  color: oklch(0.72 0.18 142);
 }
 .tab-nav-btn.active::before {
   content: '';
@@ -225,7 +225,7 @@ input[type="number"] {
   transform: translateY(-50%);
   width: 2.5px;
   height: 24px;
-  background: oklch(0.65 0.18 255);
+  background: oklch(0.72 0.18 142);
   border-radius: 0 2px 2px 0;
 }
 
@@ -246,8 +246,8 @@ input[type="number"] {
   color: oklch(0.42 0.009 250);
 }
 .studio-input:focus {
-  border-color: oklch(0.55 0.18 255);
-  box-shadow: 0 0 0 3px oklch(0.65 0.18 255 / 0.12);
+  border-color: oklch(0.60 0.18 142);
+  box-shadow: 0 0 0 3px oklch(0.72 0.18 142 / 0.12);
 }
 
 /* ─── Section header ─── */
@@ -282,12 +282,12 @@ input[type="number"] {
   flex-shrink: 0;
 }
 .color-swatch:hover {
-  border-color: oklch(0.55 0.18 255);
+  border-color: oklch(0.60 0.18 142);
   transform: scale(1.08);
 }
 .color-swatch.selected {
-  border-color: oklch(0.65 0.18 255);
-  box-shadow: 0 0 0 2px oklch(0.65 0.18 255 / 0.35);
+  border-color: oklch(0.72 0.18 142);
+  box-shadow: 0 0 0 2px oklch(0.72 0.18 142 / 0.35);
 }
 
 /* ─── Tool button ─── */
@@ -307,8 +307,8 @@ input[type="number"] {
   color: oklch(0.80 0.01 250);
 }
 .tool-btn.active {
-  background: oklch(0.65 0.18 255 / 0.15);
-  color: oklch(0.72 0.18 255);
+  background: oklch(0.72 0.18 142 / 0.15);
+  color: oklch(0.72 0.18 142);
 }
 
 /* ─── Preset chip ─── */
@@ -330,9 +330,9 @@ input[type="number"] {
   color: oklch(0.80 0.01 250);
 }
 .preset-chip.active {
-  background: oklch(0.65 0.18 255 / 0.12);
-  border-color: oklch(0.55 0.18 255);
-  color: oklch(0.72 0.18 255);
+  background: oklch(0.72 0.18 142 / 0.12);
+  border-color: oklch(0.60 0.18 142);
+  color: oklch(0.72 0.18 142);
 }
 
 /* ─── Radio mode ─── */
@@ -353,9 +353,9 @@ input[type="number"] {
   color: oklch(0.78 0.01 250);
 }
 .mode-btn.active {
-  background: oklch(0.65 0.18 255 / 0.1);
-  border-color: oklch(0.50 0.18 255 / 0.4);
-  color: oklch(0.80 0.18 255);
+  background: oklch(0.72 0.18 142 / 0.1);
+  border-color: oklch(0.60 0.18 142 / 0.4);
+  color: oklch(0.72 0.18 142);
 }
 
 /* ─── Gradient thumbnail ─── */
@@ -373,8 +373,8 @@ input[type="number"] {
   transform: scale(1.04);
 }
 .gradient-thumb.selected {
-  border-color: oklch(0.65 0.18 255);
-  box-shadow: 0 0 0 2px oklch(0.65 0.18 255 / 0.3);
+  border-color: oklch(0.72 0.18 142);
+  box-shadow: 0 0 0 2px oklch(0.72 0.18 142 / 0.3);
 }
 
 /* ─── Header action button ─── */
@@ -406,12 +406,12 @@ input[type="number"] {
   border-color: oklch(0.35 0.01 250);
 }
 .header-btn-primary {
-  background: oklch(0.65 0.18 255);
+  background: oklch(0.72 0.18 142);
   color: white;
 }
 .header-btn-primary:hover:not(:disabled) {
-  background: oklch(0.60 0.20 255);
-  box-shadow: 0 4px 12px oklch(0.65 0.18 255 / 0.35);
+  background: oklch(0.72 0.18 142);
+  box-shadow: 0 4px 12px oklch(0.72 0.18 142 / 0.35);
 }
 .header-btn-secondary {
   background: oklch(0.22 0.009 250);

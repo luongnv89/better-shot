@@ -11,18 +11,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#0b0a08;
-    --ink-2:#15120e;
-    --ink-3:#201c16;
-    --paper:#f4efe6;
-    --paper-dim:#cdc4b3;
-    --muted:#8a8274;
-    --line:rgba(244,239,230,.12);
-    --line-strong:rgba(244,239,230,.22);
-    --accent:#e9c38b;       /* champagne */
-    --accent-2:#d98b5f;     /* burnt amber */
-    --accent-3:#7aa2a0;     /* muted teal */
-    --glow:0 0 120px rgba(233,195,139,.18);
+    --ink:#0A0A0A;
+    --ink-2:#141414;
+    --ink-3:#1d1d1d;
+    --paper:#FAFAFA;
+    --paper-dim:#cfcfcf;
+    --muted:#8a8a8a;
+    --line:rgba(0,255,65,.12);
+    --line-strong:rgba(0,255,65,.26);
+    --accent:#00FF41;       /* neon green */
+    --accent-2:#00cc34;     /* neon dim */
+    --accent-3:#b6ffb0;     /* pale neon */
+    --glow:0 0 120px rgba(0,255,65,.22);
     --shadow-soft: 0 30px 80px -30px rgba(0,0,0,.6), 0 10px 30px -12px rgba(0,0,0,.5);
     --shadow-deep: 0 60px 140px -40px rgba(0,0,0,.85), 0 20px 50px -20px rgba(0,0,0,.6);
     --serif:"Fraunces", ui-serif, Georgia, serif;
@@ -69,7 +69,7 @@
   }
   nav.top .row{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
   .brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:500;font-size:20px;letter-spacing:-.01em;color:var(--paper);text-decoration:none}
-  .brand svg.mark{width:26px;height:26px;display:block;filter:drop-shadow(0 0 14px rgba(233,195,139,.35))}
+  .brand svg.mark{width:26px;height:26px;display:block;filter:drop-shadow(0 0 14px rgba(0,255,65,.35))}
   .brand b{font-weight:500}
   .brand i{font-style:italic;font-weight:400;color:var(--accent)}
   nav .links{display:flex;gap:28px;align-items:center;font-size:14px;color:var(--paper-dim)}
@@ -92,9 +92,9 @@
   .hero-bg{
     position:absolute;inset:-20% -10% 0 -10%;z-index:-1;pointer-events:none;
     background:
-      radial-gradient(ellipse 60% 50% at 20% 10%, rgba(233,195,139,.22), transparent 60%),
-      radial-gradient(ellipse 50% 50% at 80% 20%, rgba(217,139,95,.18), transparent 60%),
-      radial-gradient(ellipse 40% 40% at 50% 70%, rgba(122,162,160,.14), transparent 70%);
+      radial-gradient(ellipse 60% 50% at 20% 10%, rgba(0,255,65,.22), transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 20%, rgba(0,204,52,.18), transparent 60%),
+      radial-gradient(ellipse 40% 40% at 50% 70%, rgba(182,255,176,.14), transparent 70%);
     filter:blur(10px);
     animation:drift 22s ease-in-out infinite alternate;
   }
@@ -147,8 +147,8 @@
   }
   .btn-primary{
     color:var(--ink);
-    background:linear-gradient(180deg,#fbeccb, var(--accent));
-    box-shadow:0 10px 40px -10px rgba(233,195,139,.55), inset 0 1px 0 rgba(255,255,255,.6);
+    background:linear-gradient(180deg,#b6ffb0, var(--accent));
+    box-shadow:0 10px 40px -10px rgba(0,255,65,.55), inset 0 1px 0 rgba(255,255,255,.6);
     position:relative;overflow:hidden;
   }
   .btn-primary::after{
@@ -202,7 +202,7 @@
   }
   .mockup-halo{
     position:absolute;inset:-10% -5% -20% -5%;z-index:-1;
-    background:radial-gradient(ellipse at 50% 60%, rgba(233,195,139,.28), transparent 60%);
+    background:radial-gradient(ellipse at 50% 60%, rgba(0,255,65,.28), transparent 60%);
     filter:blur(40px);
   }
   .floating-chip{
@@ -259,8 +259,8 @@
   .feature-card .icon{
     width:42px;height:42px;border-radius:12px;
     display:grid;place-items:center;margin-bottom:18px;
-    background:linear-gradient(180deg, rgba(233,195,139,.18), rgba(233,195,139,.05));
-    border:1px solid rgba(233,195,139,.25);
+    background:linear-gradient(180deg, rgba(0,255,65,.18), rgba(0,255,65,.05));
+    border:1px solid rgba(0,255,65,.25);
     color:var(--accent);
   }
   .feature-card h3{
@@ -322,7 +322,7 @@
     max-width:780px;margin:0 auto;
     padding:60px 40px;border-radius:24px;
     background:
-      radial-gradient(ellipse at 50% 0%, rgba(122,162,160,.18), transparent 60%),
+      radial-gradient(ellipse at 50% 0%, rgba(182,255,176,.18), transparent 60%),
       linear-gradient(180deg, rgba(244,239,230,.04), rgba(244,239,230,.01));
     border:1px solid var(--line-strong);
     position:relative;overflow:hidden;
@@ -352,7 +352,7 @@
   }
   .code-block::before{
     content:"";position:absolute;inset:0;
-    background:linear-gradient(120deg, transparent 40%, rgba(233,195,139,.08) 50%, transparent 60%);
+    background:linear-gradient(120deg, transparent 40%, rgba(0,255,65,.08) 50%, transparent 60%);
     transform:translateX(-100%);
     animation:sheen 4s ease-in-out infinite;
   }
@@ -386,7 +386,7 @@
     color:var(--paper);text-decoration:none;
     transition:transform .2s ease,border-color .2s ease,background .2s ease;
   }
-  .download-card:hover{transform:translateY(-2px);border-color:var(--accent);background:linear-gradient(180deg,rgba(233,195,139,.08),rgba(233,195,139,.02))}
+  .download-card:hover{transform:translateY(-2px);border-color:var(--accent);background:linear-gradient(180deg,rgba(0,255,65,.08),rgba(0,255,65,.02))}
   .download-arch{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
   .download-title{font-family:var(--serif);font-weight:400;font-size:20px;line-height:1.2;margin-bottom:6px}
   .download-meta{font-family:var(--mono);font-size:12px;color:var(--muted)}
@@ -423,8 +423,8 @@
   .final::before{
     content:"";position:absolute;inset:0;z-index:-1;
     background:
-      radial-gradient(ellipse 70% 50% at 50% 60%, rgba(233,195,139,.15), transparent 70%),
-      radial-gradient(ellipse 50% 30% at 30% 30%, rgba(217,139,95,.1), transparent 70%);
+      radial-gradient(ellipse 70% 50% at 50% 60%, rgba(0,255,65,.15), transparent 70%),
+      radial-gradient(ellipse 50% 30% at 30% 30%, rgba(0,204,52,.1), transparent 70%);
   }
   .final h2{
     font-family:var(--serif);font-weight:300;
@@ -459,9 +459,11 @@
   <div class="wrap row">
     <a href="#" class="brand">
       <svg class="mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-        <path d="M12 6 H52 Q58 6 58 12 V52 Q58 58 52 58 H12 Q6 58 6 52 V12 Q6 6 12 6 Z M12 12 V52 H52 V12 Z" fill="#F4EFE6"/>
-        <path d="M32 20 A12 12 0 1 1 32 44 A12 12 0 1 1 32 20 Z M32 26 A6 6 0 1 0 32 38 A6 6 0 1 0 32 26 Z" fill="#F4EFE6" fill-rule="evenodd"/>
-        <path d="M44 14 L50 20 L26 44 L20 38 Z" fill="#E9C38B"/>
+        <path d="M14 22 L14 14 L22 14" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M42 14 L50 14 L50 22" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M50 42 L50 50 L42 50" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M22 50 L14 50 L14 42" stroke="#00FF41" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M32 22 L34 30 L42 32 L34 34 L32 42 L30 34 L22 32 L30 30 Z" fill="#00FF41"/>
       </svg>
       <span><b>Better</b><i>Shot</i></span>
     </a>

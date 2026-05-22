@@ -126,9 +126,19 @@ pub fn run() {
                 ])
                 .build()?;
 
+            // Embed a template-style tray icon (monochrome, transparent bg) so macOS
+            // auto-tints it for dark/light menu bars. Decoded from PNG at startup.
+            let tray_png = include_bytes!("../icons/trayTemplate@2x.png");
+            let tray_img = ::image::load_from_memory(tray_png)
+                .expect("tray icon failed to decode")
+                .to_rgba8();
+            let (w, h) = tray_img.dimensions();
+            let tray_icon = tauri::image::Image::new_owned(tray_img.into_raw(), w, h);
+
             let _tray = tauri::tray::TrayIconBuilder::new()
                 .menu(&menu)
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_icon)
+                .icon_as_template(true)
                 .tooltip("Better Shot")
                 .on_menu_event(move |app, event| {
                     match event.id().as_ref() {

@@ -253,7 +253,7 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
                     <div className="flex items-center gap-2">
                       <button
                         ref={recordingRef}
-                        className="flex-1 px-2 py-1 bg-card border-2 border-blue-500 rounded text-card-foreground text-sm focus:outline-none animate-pulse text-left"
+                        className="flex-1 px-2 py-1 bg-card border-2 border-primary rounded text-card-foreground text-sm focus:outline-none animate-pulse text-left"
                         autoFocus
                       >
                         {recordedShortcut ? formatShortcut(recordedShortcut) : "Press shortcut..."}

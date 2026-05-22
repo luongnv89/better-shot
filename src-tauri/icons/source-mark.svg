@@ -1,4 +1,4 @@
-<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BetterShot app icon">
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="halo" cx="0.5" cy="0.5" r="0.6">
       <stop offset="0%" stop-color="#00FF41" stop-opacity="0.18"/>
@@ -8,13 +8,10 @@
   </defs>
   <rect width="512" height="512" rx="112" fill="#0A0A0A"/>
   <rect width="512" height="512" rx="112" fill="url(#halo)"/>
-
-  <!-- Mark geometry scaled by 8 (centered: original 0..64 → 0..512) -->
   <path d="M112 176 L112 112 L176 112" fill="none" stroke="#00FF41" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M336 112 L400 112 L400 176" fill="none" stroke="#00FF41" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M400 336 L400 400 L336 400" fill="none" stroke="#00FF41" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M176 400 L112 400 L112 336" fill="none" stroke="#00FF41" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
-
   <path d="M256 176 L272 240 L336 256 L272 272 L256 336 L240 272 L176 256 L240 240 Z" fill="#00FF41"/>
   <circle cx="256" cy="256" r="16" fill="#0A0A0A"/>
 </svg>
