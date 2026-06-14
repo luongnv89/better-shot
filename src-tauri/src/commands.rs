@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
@@ -21,6 +22,11 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine as _;
 
 static SCREENCAPTURE_LOCK: Mutex<()> = Mutex::new(());
+
+/// Process-unique counter to disambiguate temp-workspace filenames copied within
+/// the same millisecond (two picked files sharing a basename would otherwise
+/// collide and overwrite each other).
+static TEMP_WORKSPACE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[tauri::command]
 pub async fn move_window_to_active_space(app_handle: AppHandle) -> Result<(), String> {
@@ -95,6 +101,30 @@ pub async fn capture_region(
     crop_image(&screenshot_path, region, &save_dir)
 }
 
+/// Given a desired destination path, return a path that does not yet exist on
+/// disk by inserting a `-2`, `-3`, ... suffix before the extension. If the
+/// original path is free, it is returned unchanged.
+fn unique_destination(dest: PathBuf) -> PathBuf {
+    if !dest.exists() {
+        return dest;
+    }
+    let parent = dest.parent().map(PathBuf::from).unwrap_or_default();
+    let stem = dest
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("image")
+        .to_string();
+    let ext = dest.extension().and_then(|s| s.to_str()).unwrap_or("png");
+    let mut counter = 2u32;
+    loop {
+        let candidate = parent.join(format!("{}-{}.{}", stem, counter, ext));
+        if !candidate.exists() {
+            return candidate;
+        }
+        counter += 1;
+    }
+}
+
 /// Save an edited image from base64 data
 #[tauri::command]
 pub async fn save_edited_image(
@@ -103,8 +133,10 @@ pub async fn save_edited_image(
     copy_to_clip: bool,
     prefix: Option<String>,
     filename: Option<String>,
+    no_overwrite: Option<bool>,
 ) -> Result<String, String> {
     let chosen_prefix = prefix.unwrap_or_else(|| "bettershot".to_string());
+    let no_overwrite = no_overwrite.unwrap_or(false);
 
     let saved_path = if let Some(name) = filename {
         // honor custom filename; append .png if needed
@@ -117,7 +149,12 @@ pub async fn save_edited_image(
             }
             let dest_path = PathBuf::from(&save_dir);
             ensure_dir(&dest_path).map_err(|e| e)?;
-            let file_path = dest_path.join(final_name);
+            let mut file_path = dest_path.join(final_name);
+            // In no-overwrite mode (batch export), never clobber an existing
+            // file on disk: pick a `-2`, `-3`, ... suffixed name instead.
+            if no_overwrite {
+                file_path = unique_destination(file_path);
+            }
             let base64_data = image_data
                 .strip_prefix("data:image/png;base64,")
                 .ok_or("Invalid image data format: expected data:image/png;base64, prefix")?;
@@ -401,6 +438,50 @@ end try"#;
 }
 
 #[tauri::command]
+pub fn open_image_files_dialog() -> Result<Vec<String>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let script = r#"try
+  set chosenFiles to choose file with prompt "Select photos to resize" of type {"public.png", "public.jpeg", "public.heic", "public.webp"} with multiple selections allowed
+  set out to ""
+  repeat with f in chosenFiles
+    set out to out & POSIX path of f & linefeed
+  end repeat
+  return out
+on error
+  return ""
+end try"#;
+
+        // The AppleScript swallows user-cancel (`on error -> return ""`) and exits
+        // successfully, so a non-success status / spawn failure here is a genuine
+        // picker failure worth surfacing distinctly to the caller.
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .output()
+            .map_err(|e| format!("Failed to launch image picker: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Image picker failed to launch: {}", stderr.trim()));
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let paths: Vec<String> = stdout
+            .lines()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        Ok(paths)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Image picker is only supported on macOS".to_string())
+    }
+}
+
+#[tauri::command]
 pub fn delete_temp_workspace_file(file_path: String) -> Result<(), String> {
     let path = PathBuf::from(&file_path);
     // Only delete files that are inside the bettershot-uploads temp directory
@@ -445,7 +526,10 @@ pub fn copy_file_to_temp_workspace(source_path: String) -> Result<String, String
         .unwrap_or("photo.png");
     let sanitized = sanitize_filename(file_name);
 
-    let dest_name = format!("{}-{}", timestamp.as_millis(), sanitized);
+    // Append a process-unique counter so two files with the same basename copied
+    // within the same millisecond do not produce the same dest path.
+    let unique = TEMP_WORKSPACE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let dest_name = format!("{}-{}-{}", timestamp.as_millis(), unique, sanitized);
     let destination = target_dir.join(dest_name);
 
     fs::copy(&source, &destination)
@@ -558,5 +642,59 @@ pub async fn native_capture_window(save_dir: String) -> Result<String, String> {
         Ok(path_str)
     } else {
         Err("Screenshot was cancelled or failed".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unique_destination;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static TEST_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    /// A throwaway temp directory that removes itself on drop.
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new() -> Self {
+            let mut dir = std::env::temp_dir();
+            let unique = TEST_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
+            dir.push(format!("bs-unique-dest-test-{}-{}", std::process::id(), unique));
+            fs::create_dir_all(&dir).unwrap();
+            TempDir(dir)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn returns_path_unchanged_when_free() {
+        let tmp = TempDir::new();
+        let dest = tmp.0.join("shot-1280x800.png");
+        assert_eq!(unique_destination(dest.clone()), dest);
+    }
+
+    #[test]
+    fn suffixes_when_target_exists() {
+        let tmp = TempDir::new();
+        let dest = tmp.0.join("shot-1280x800.png");
+        fs::write(&dest, b"x").unwrap();
+        assert_eq!(unique_destination(dest), tmp.0.join("shot-1280x800-2.png"));
+    }
+
+    #[test]
+    fn increments_suffix_past_existing_suffixed_files() {
+        let tmp = TempDir::new();
+        let dest = tmp.0.join("shot-1280x800.png");
+        fs::write(&dest, b"x").unwrap();
+        fs::write(tmp.0.join("shot-1280x800-2.png"), b"x").unwrap();
+        fs::write(tmp.0.join("shot-1280x800-3.png"), b"x").unwrap();
+        assert_eq!(unique_destination(dest), tmp.0.join("shot-1280x800-4.png"));
     }
 }

@@ -15,7 +15,8 @@ use commands::{
     get_mouse_position, get_temp_directory, move_window_to_active_space,
     native_capture_fullscreen, native_capture_interactive, native_capture_window,
     play_screenshot_sound, save_edited_image, select_directory_dialog,
-    open_image_file_dialog, copy_file_to_temp_workspace, delete_temp_workspace_file,
+    open_image_file_dialog, open_image_files_dialog, copy_file_to_temp_workspace,
+    delete_temp_workspace_file,
 };
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -181,6 +182,7 @@ pub fn run() {
             get_mouse_position,
             move_window_to_active_space,
             open_image_file_dialog,
+            open_image_files_dialog,
             copy_file_to_temp_workspace,
             delete_temp_workspace_file,
         ])
