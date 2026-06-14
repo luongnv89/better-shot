@@ -24,6 +24,11 @@ export type BatchStatus = "pending" | "processing" | "done" | "error";
  * (compared case-insensitively) is already in `taken`, a `-2`, `-3`, ...
  * suffix is appended before `.png` until unique. The chosen name (lowercased)
  * is added to `taken`. The returned name preserves the original case of the stem.
+ *
+ * `taken` only dedupes within a single export run. Collisions against files
+ * already on disk (or outputs from a previous run) are resolved by the backend
+ * `save_edited_image` command, which is invoked with `no_overwrite: true` for
+ * batch export and auto-suffixes any name that already exists in the folder.
  */
 export function deriveFilename(
   sourcePath: string,

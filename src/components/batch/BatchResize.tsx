@@ -242,6 +242,9 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
               saveDir,
               copyToClip: false,
               filename,
+              // Batch export must never silently clobber pre-existing files or
+              // outputs from a previous run; the backend auto-suffixes instead.
+              noOverwrite: true,
             }),
           onItemStatus: (id, status, detail) => dispatch({ type: "status", id, status, detail }),
         }

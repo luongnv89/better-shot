@@ -101,6 +101,30 @@ pub async fn capture_region(
     crop_image(&screenshot_path, region, &save_dir)
 }
 
+/// Given a desired destination path, return a path that does not yet exist on
+/// disk by inserting a `-2`, `-3`, ... suffix before the extension. If the
+/// original path is free, it is returned unchanged.
+fn unique_destination(dest: PathBuf) -> PathBuf {
+    if !dest.exists() {
+        return dest;
+    }
+    let parent = dest.parent().map(PathBuf::from).unwrap_or_default();
+    let stem = dest
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("image")
+        .to_string();
+    let ext = dest.extension().and_then(|s| s.to_str()).unwrap_or("png");
+    let mut counter = 2u32;
+    loop {
+        let candidate = parent.join(format!("{}-{}.{}", stem, counter, ext));
+        if !candidate.exists() {
+            return candidate;
+        }
+        counter += 1;
+    }
+}
+
 /// Save an edited image from base64 data
 #[tauri::command]
 pub async fn save_edited_image(
@@ -109,8 +133,10 @@ pub async fn save_edited_image(
     copy_to_clip: bool,
     prefix: Option<String>,
     filename: Option<String>,
+    no_overwrite: Option<bool>,
 ) -> Result<String, String> {
     let chosen_prefix = prefix.unwrap_or_else(|| "bettershot".to_string());
+    let no_overwrite = no_overwrite.unwrap_or(false);
 
     let saved_path = if let Some(name) = filename {
         // honor custom filename; append .png if needed
@@ -123,7 +149,12 @@ pub async fn save_edited_image(
             }
             let dest_path = PathBuf::from(&save_dir);
             ensure_dir(&dest_path).map_err(|e| e)?;
-            let file_path = dest_path.join(final_name);
+            let mut file_path = dest_path.join(final_name);
+            // In no-overwrite mode (batch export), never clobber an existing
+            // file on disk: pick a `-2`, `-3`, ... suffixed name instead.
+            if no_overwrite {
+                file_path = unique_destination(file_path);
+            }
             let base64_data = image_data
                 .strip_prefix("data:image/png;base64,")
                 .ok_or("Invalid image data format: expected data:image/png;base64, prefix")?;
@@ -611,5 +642,59 @@ pub async fn native_capture_window(save_dir: String) -> Result<String, String> {
         Ok(path_str)
     } else {
         Err("Screenshot was cancelled or failed".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unique_destination;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static TEST_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    /// A throwaway temp directory that removes itself on drop.
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new() -> Self {
+            let mut dir = std::env::temp_dir();
+            let unique = TEST_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
+            dir.push(format!("bs-unique-dest-test-{}-{}", std::process::id(), unique));
+            fs::create_dir_all(&dir).unwrap();
+            TempDir(dir)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn returns_path_unchanged_when_free() {
+        let tmp = TempDir::new();
+        let dest = tmp.0.join("shot-1280x800.png");
+        assert_eq!(unique_destination(dest.clone()), dest);
+    }
+
+    #[test]
+    fn suffixes_when_target_exists() {
+        let tmp = TempDir::new();
+        let dest = tmp.0.join("shot-1280x800.png");
+        fs::write(&dest, b"x").unwrap();
+        assert_eq!(unique_destination(dest), tmp.0.join("shot-1280x800-2.png"));
+    }
+
+    #[test]
+    fn increments_suffix_past_existing_suffixed_files() {
+        let tmp = TempDir::new();
+        let dest = tmp.0.join("shot-1280x800.png");
+        fs::write(&dest, b"x").unwrap();
+        fs::write(tmp.0.join("shot-1280x800-2.png"), b"x").unwrap();
+        fs::write(tmp.0.join("shot-1280x800-3.png"), b"x").unwrap();
+        assert_eq!(unique_destination(dest), tmp.0.join("shot-1280x800-4.png"));
     }
 }
