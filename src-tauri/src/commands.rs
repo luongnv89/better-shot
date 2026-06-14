@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
@@ -21,6 +22,11 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine as _;
 
 static SCREENCAPTURE_LOCK: Mutex<()> = Mutex::new(());
+
+/// Process-unique counter to disambiguate temp-workspace filenames copied within
+/// the same millisecond (two picked files sharing a basename would otherwise
+/// collide and overwrite each other).
+static TEMP_WORKSPACE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[tauri::command]
 pub async fn move_window_to_active_space(app_handle: AppHandle) -> Result<(), String> {
@@ -415,6 +421,9 @@ on error
   return ""
 end try"#;
 
+        // The AppleScript swallows user-cancel (`on error -> return ""`) and exits
+        // successfully, so a non-success status / spawn failure here is a genuine
+        // picker failure worth surfacing distinctly to the caller.
         let output = Command::new("osascript")
             .arg("-e")
             .arg(script)
@@ -422,7 +431,8 @@ end try"#;
             .map_err(|e| format!("Failed to launch image picker: {}", e))?;
 
         if !output.status.success() {
-            return Err("Image picker was cancelled or failed".to_string());
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Image picker failed to launch: {}", stderr.trim()));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -485,7 +495,10 @@ pub fn copy_file_to_temp_workspace(source_path: String) -> Result<String, String
         .unwrap_or("photo.png");
     let sanitized = sanitize_filename(file_name);
 
-    let dest_name = format!("{}-{}", timestamp.as_millis(), sanitized);
+    // Append a process-unique counter so two files with the same basename copied
+    // within the same millisecond do not produce the same dest path.
+    let unique = TEMP_WORKSPACE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let dest_name = format!("{}-{}-{}", timestamp.as_millis(), unique, sanitized);
     let destination = target_dir.join(dest_name);
 
     fs::copy(&source, &destination)

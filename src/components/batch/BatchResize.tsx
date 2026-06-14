@@ -109,6 +109,10 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
   const [state, dispatch] = useReducer(reducer, { items: [], statuses: {} });
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
+  // Raw input strings so the user can type freely (e.g. "1280" digit-by-digit);
+  // the 100-5000 clamp is applied on blur, not on every keystroke.
+  const [widthInput, setWidthInput] = useState("");
+  const [heightInput, setHeightInput] = useState("");
   const [fit, setFit] = useState<FitMode>("fit");
   const [bg, setBg] = useState<LetterboxColor>("transparent");
   const [isRunning, setIsRunning] = useState(false);
@@ -176,24 +180,31 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
         toast.warning(`${added} added, ${skipped} could not be loaded`);
       }
     } catch (err) {
+      // A user cancel now returns Ok(empty vec) from the backend (no-op above),
+      // so anything thrown here is a genuine picker failure worth surfacing.
       const message = err instanceof Error ? err.message : String(err);
-      // A cancelled picker is not an error worth surfacing loudly.
-      if (!message.toLowerCase().includes("cancel")) {
-        toast.error("Could not open file picker", { description: message });
-      }
+      toast.error("Could not open file picker", { description: message });
     } finally {
       setIsAdding(false);
     }
   }, [isRunning, isAdding]);
 
-  const handleClampedInput = useCallback((value: string, setter: (n: number) => void) => {
-    const num = parseInt(value, 10);
-    if (!isNaN(num)) {
-      setter(Math.max(100, Math.min(5000, num)));
-    } else {
-      setter(0);
-    }
-  }, []);
+  // Clamp the raw string on blur, write the result back into both the numeric
+  // state used for export and the visible input field.
+  const handleClampedBlur = useCallback(
+    (value: string, setNum: (n: number) => void, setStr: (s: string) => void) => {
+      const num = parseInt(value, 10);
+      if (!isNaN(num)) {
+        const clamped = Math.max(100, Math.min(5000, num));
+        setNum(clamped);
+        setStr(String(clamped));
+      } else {
+        setNum(0);
+        setStr("");
+      }
+    },
+    []
+  );
 
   const handleChangeDir = useCallback(async () => {
     try {
@@ -316,7 +327,12 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
               return (
                 <button
                   key={preset.label}
-                  onClick={() => { setWidth(preset.width); setHeight(preset.height); }}
+                  onClick={() => {
+                    setWidth(preset.width);
+                    setHeight(preset.height);
+                    setWidthInput(String(preset.width));
+                    setHeightInput(String(preset.height));
+                  }}
                   className={cn("preset-chip", isActive && "active")}
                   title={preset.tooltip}
                 >
@@ -332,8 +348,9 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
               <div style={{ fontSize: 10, color: "oklch(0.42 0.009 250)", marginBottom: 4 }}>W</div>
               <input
                 type="number"
-                value={width || ""}
-                onChange={(e) => handleClampedInput(e.target.value, setWidth)}
+                value={widthInput}
+                onChange={(e) => setWidthInput(e.target.value)}
+                onBlur={(e) => handleClampedBlur(e.target.value, setWidth, setWidthInput)}
                 placeholder="Width"
                 min={100} max={5000}
                 className="studio-input"
@@ -344,8 +361,9 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
               <div style={{ fontSize: 10, color: "oklch(0.42 0.009 250)", marginBottom: 4 }}>H</div>
               <input
                 type="number"
-                value={height || ""}
-                onChange={(e) => handleClampedInput(e.target.value, setHeight)}
+                value={heightInput}
+                onChange={(e) => setHeightInput(e.target.value)}
+                onBlur={(e) => handleClampedBlur(e.target.value, setHeight, setHeightInput)}
                 placeholder="Height"
                 min={100} max={5000}
                 className="studio-input"
