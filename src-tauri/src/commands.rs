@@ -401,6 +401,46 @@ end try"#;
 }
 
 #[tauri::command]
+pub fn open_image_files_dialog() -> Result<Vec<String>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let script = r#"try
+  set chosenFiles to choose file with prompt "Select photos to resize" of type {"public.png", "public.jpeg", "public.heic", "public.webp"} with multiple selections allowed
+  set out to ""
+  repeat with f in chosenFiles
+    set out to out & POSIX path of f & linefeed
+  end repeat
+  return out
+on error
+  return ""
+end try"#;
+
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .output()
+            .map_err(|e| format!("Failed to launch image picker: {}", e))?;
+
+        if !output.status.success() {
+            return Err("Image picker was cancelled or failed".to_string());
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let paths: Vec<String> = stdout
+            .lines()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        Ok(paths)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Image picker is only supported on macOS".to_string())
+    }
+}
+
+#[tauri::command]
 pub fn delete_temp_workspace_file(file_path: String) -> Result<(), String> {
     let path = PathBuf::from(&file_path);
     // Only delete files that are inside the bettershot-uploads temp directory
