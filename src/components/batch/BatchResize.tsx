@@ -1,4 +1,4 @@
-import { useCallback, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { ArrowLeft, FolderOpen, ImagePlus, Loader2, Trash2 } from "lucide-react";
@@ -76,6 +76,13 @@ function basename(path: string): string {
   return path.split(/[/\\]/).pop() ?? path;
 }
 
+/** Best-effort cleanup of a sandboxed temp-workspace file. */
+function cleanupWorkspaceFile(filePath: string): void {
+  invoke("delete_temp_workspace_file", { filePath }).catch(() => {
+    /* best effort */
+  });
+}
+
 function StatusBadge({ state }: { state: ItemState | undefined }) {
   const status = state?.status ?? "pending";
   if (status === "pending") {
@@ -109,6 +116,25 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
 
   const { items, statuses } = state;
 
+  // Track current items so the unmount cleanup sees the latest list.
+  const itemsRef = useRef(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+
+  // On unmount, remove any sandboxed temp-workspace files we created.
+  useEffect(() => {
+    return () => {
+      for (const item of itemsRef.current) {
+        cleanupWorkspaceFile(item.workspacePath);
+      }
+    };
+  }, []);
+
+  const handleRemove = useCallback((id: string) => {
+    const item = itemsRef.current.find((i) => i.id === id);
+    if (item) cleanupWorkspaceFile(item.workspacePath);
+    dispatch({ type: "remove", id });
+  }, []);
+
   const handleAddFiles = useCallback(async () => {
     if (isRunning || isAdding) return;
     setIsAdding(true);
@@ -117,14 +143,22 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
       let added = 0;
       let skipped = 0;
       for (const path of paths) {
+        let workspacePath: string | null = null;
         try {
-          const assetUrl = convertFileSrc(path);
+          // The asset protocol scope does not cover arbitrary user paths
+          // (Desktop, Downloads, ...). Mirror the upload flow: copy into the
+          // sandboxed temp workspace, which IS in scope, then load from there.
+          workspacePath = await invoke<string>("copy_file_to_temp_workspace", {
+            sourcePath: path,
+          });
+          const assetUrl = convertFileSrc(workspacePath);
           const img = await loadImage(assetUrl);
           dispatch({
             type: "add",
             item: {
               id: crypto.randomUUID(),
               sourcePath: path,
+              workspacePath,
               assetUrl,
               originalWidth: img.naturalWidth,
               originalHeight: img.naturalHeight,
@@ -133,6 +167,8 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
           added++;
         } catch (err) {
           console.error("Failed to load image", path, err);
+          // If the copy succeeded but loading failed, drop the orphaned temp file.
+          if (workspacePath) cleanupWorkspaceFile(workspacePath);
           skipped++;
         }
       }
@@ -254,7 +290,7 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
                     <StatusBadge state={statuses[item.id]} />
                   </div>
                   <button
-                    onClick={() => dispatch({ type: "remove", id: item.id })}
+                    onClick={() => handleRemove(item.id)}
                     disabled={isRunning}
                     aria-label="Remove file"
                     style={{

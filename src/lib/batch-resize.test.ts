@@ -82,9 +82,9 @@ describe("buildRenderOptions", () => {
 describe("runBatchResize error isolation", () => {
   it("continues past a failing item and reports per-item status", async () => {
     const items: BatchItem[] = [
-      { id: "a", sourcePath: "/x/one.png", assetUrl: "asset://one", originalWidth: 10, originalHeight: 10 },
-      { id: "b", sourcePath: "/x/two.png", assetUrl: "asset://two", originalWidth: 10, originalHeight: 10 },
-      { id: "c", sourcePath: "/x/three.png", assetUrl: "asset://three", originalWidth: 10, originalHeight: 10 },
+      { id: "a", sourcePath: "/x/one.png", workspacePath: "/tmp/one.png", assetUrl: "asset://one", originalWidth: 10, originalHeight: 10 },
+      { id: "b", sourcePath: "/x/two.png", workspacePath: "/tmp/two.png", assetUrl: "asset://two", originalWidth: 10, originalHeight: 10 },
+      { id: "c", sourcePath: "/x/three.png", workspacePath: "/tmp/three.png", assetUrl: "asset://three", originalWidth: 10, originalHeight: 10 },
     ];
 
     const statuses: Array<{ id: string; status: BatchStatus; detail?: string }> = [];

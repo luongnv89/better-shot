@@ -5,7 +5,10 @@ export type LetterboxColor = "transparent" | "white" | "black";
 
 export interface BatchItem {
   id: string;
+  /** Original user-picked path, used to derive the output filename. */
   sourcePath: string;
+  /** Sandboxed temp-workspace path the asset URL is derived from (for cleanup). */
+  workspacePath: string;
   assetUrl: string;
   originalWidth: number;
   originalHeight: number;
