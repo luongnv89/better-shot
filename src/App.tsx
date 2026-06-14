@@ -10,7 +10,7 @@ import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { Store } from "@tauri-apps/plugin-store";
 import type { KeyboardShortcut } from "./components/preferences/KeyboardShortcutManager";
 import { SettingsIcon } from "./components/SettingsIcon";
-import { AppWindowMac, Crop, ImageUp, Monitor } from "lucide-react";
+import { AppWindowMac, Crop, ImageUp, Layers, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { editorActions } from "@/stores/editorStore";
@@ -19,8 +19,9 @@ import { editorActions } from "@/stores/editorStore";
 const ImageEditor = lazy(() => import("./components/ImageEditor").then(m => ({ default: m.ImageEditor })));
 const OnboardingFlow = lazy(() => import("./components/onboarding/OnboardingFlow").then(m => ({ default: m.OnboardingFlow })));
 const PreferencesPage = lazy(() => import("./components/preferences/PreferencesPage").then(m => ({ default: m.PreferencesPage })));
+const BatchResize = lazy(() => import("./components/batch/BatchResize").then(m => ({ default: m.BatchResize })));
 
-type AppMode = "main" | "editing" | "preferences";
+type AppMode = "main" | "editing" | "preferences" | "batch";
 type CaptureMode = "region" | "fullscreen" | "window";
 
 // Loading fallback for lazy loaded components
@@ -569,9 +570,21 @@ function App() {
   if (mode === "preferences") {
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <PreferencesPage 
-          onBack={handleBackFromPreferences} 
+        <PreferencesPage
+          onBack={handleBackFromPreferences}
           onSettingsChange={handleSettingsChange}
+        />
+      </Suspense>
+    );
+  }
+
+  if (mode === "batch") {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <BatchResize
+          saveDir={saveDir}
+          onSaveDirChange={handleSaveDirChange}
+          onBack={() => setMode("main")}
         />
       </Suspense>
     );
@@ -644,6 +657,22 @@ function App() {
           </Button>
           <p className="text-xs text-muted-foreground text-center text-pretty">
             Bring an existing image into the editor without taking a new screenshot.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <Button
+            onClick={() => setMode("batch")}
+            disabled={isCapturing}
+            variant="outline"
+            size="lg"
+            className="w-full justify-center py-3 disabled:cursor-not-allowed"
+          >
+            <Layers className="size-4" aria-hidden="true" />
+            Batch resize
+          </Button>
+          <p className="text-xs text-muted-foreground text-center text-pretty">
+            Resize many images to a preset size and export them all at once.
           </p>
         </div>
 
