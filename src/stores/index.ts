@@ -17,3 +17,13 @@ export {
 } from "./editorStore";
 
 export type { EditorStore, EditorSettings, ShadowSettings, BackgroundType } from "./editorStore";
+
+export {
+  useCaptureHistoryStore,
+  useCaptureHistoryEntries,
+  useCaptureHistoryActions,
+  captureHistoryActions,
+  clearPersistedCaptureHistory as clearCaptureHistory,
+} from "./captureHistoryStore";
+
+export type { CaptureHistoryEntry } from "./captureHistoryStore";
