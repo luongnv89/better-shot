@@ -1,7 +1,7 @@
 //! Tauri commands module
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -541,6 +541,74 @@ pub fn copy_file_to_temp_workspace(source_path: String) -> Result<String, String
         .ok_or_else(|| "Failed to convert temp path to string".to_string())
 }
 
+/// Name of the persistent app-data subdirectory that holds raw captures.
+/// Kept as a constant so the dir resolver and the delete command agree on it.
+const APP_CAPTURES_SUBDIR: &str = "captures";
+
+/// Resolve (and create) the persistent app-data captures directory.
+///
+/// Raw captures are written straight here by passing this path as `save_dir` to
+/// the `native_capture_*` commands. The directory lives under `app_data_dir()`,
+/// which is already covered by the `$APPDATA/**` asset-protocol scope, so the
+/// saved PNGs load directly via `convertFileSrc` with no copy step.
+///
+/// `create_dir_all` is idempotent, so calling this immediately before every
+/// capture is cheap and guarantees the dir exists (screencapture fails if its
+/// `save_dir` is missing) even when a capture fires very early via a global
+/// shortcut or the tray menu.
+#[tauri::command]
+pub fn get_app_captures_dir(app_handle: AppHandle) -> Result<String, String> {
+    let mut dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data directory: {}", e))?;
+    dir.push(APP_CAPTURES_SUBDIR);
+    fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create captures directory: {}", e))?;
+    dir.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Failed to convert captures path to string".to_string())
+}
+
+/// Validate that `file` resolves to a location inside `dir`, returning the
+/// canonicalized file path on success.
+///
+/// Pure and AppHandle-free so it can be unit-tested directly: the capture-delete
+/// command resolves the captures dir, then defers the path-scoping decision here.
+/// Canonicalizing both sides defeats `..` traversal and symlink escapes.
+fn validate_within(file: &Path, dir: &Path) -> Result<PathBuf, String> {
+    let canonical_path = file
+        .canonicalize()
+        .map_err(|_| "File not found or already deleted".to_string())?;
+    let canonical_dir = dir
+        .canonicalize()
+        .map_err(|_| "Captures directory not found".to_string())?;
+    if !canonical_path.starts_with(&canonical_dir) {
+        return Err("Refusing to delete file outside the captures directory".to_string());
+    }
+    Ok(canonical_path)
+}
+
+/// Delete a single raw-capture PNG that has been evicted from the rolling buffer.
+///
+/// Scoped to the app-data captures directory (`app_data_dir()/captures`) so it
+/// can never be used to delete arbitrary files — the existing
+/// `delete_temp_workspace_file` is hard-locked to `bettershot-uploads` and
+/// cannot be reused here.
+#[tauri::command]
+pub fn delete_capture_file(app_handle: AppHandle, file_path: String) -> Result<(), String> {
+    let mut captures_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data directory: {}", e))?;
+    captures_dir.push(APP_CAPTURES_SUBDIR);
+
+    let path = PathBuf::from(&file_path);
+    let canonical_path = validate_within(&path, &captures_dir)?;
+    fs::remove_file(&canonical_path)
+        .map_err(|e| format!("Failed to delete capture file: {}", e))
+}
+
 fn sanitize_filename(value: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {
@@ -647,7 +715,7 @@ pub async fn native_capture_window(save_dir: String) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::unique_destination;
+    use super::{unique_destination, validate_within};
     use std::fs;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -696,5 +764,67 @@ mod tests {
         fs::write(tmp.0.join("shot-1280x800-2.png"), b"x").unwrap();
         fs::write(tmp.0.join("shot-1280x800-3.png"), b"x").unwrap();
         assert_eq!(unique_destination(dest), tmp.0.join("shot-1280x800-4.png"));
+    }
+
+    // ---- validate_within (scoping for delete_capture_file) ----
+
+    #[test]
+    fn validate_within_accepts_a_file_inside_the_dir() {
+        let tmp = TempDir::new();
+        let file = tmp.0.join("capture-1.png");
+        fs::write(&file, b"x").unwrap();
+        let ok = validate_within(&file, &tmp.0).expect("file inside dir should validate");
+        // Returns the canonicalized path, which must still live under the dir.
+        assert!(ok.starts_with(tmp.0.canonicalize().unwrap()));
+    }
+
+    #[test]
+    fn validate_within_rejects_a_file_outside_the_dir() {
+        // The captures dir and a sibling dir holding the target file.
+        let captures = TempDir::new();
+        let other = TempDir::new();
+        let outside = other.0.join("victim.png");
+        fs::write(&outside, b"x").unwrap();
+
+        let err = validate_within(&outside, &captures.0)
+            .expect_err("a file outside the captures dir must be rejected");
+        assert!(
+            err.contains("outside the captures directory"),
+            "unexpected error: {err}"
+        );
+        // The rejected file must NOT have been touched.
+        assert!(outside.exists());
+    }
+
+    #[test]
+    fn validate_within_rejects_path_traversal_escape() {
+        let captures = TempDir::new();
+        let other = TempDir::new();
+        let outside = other.0.join("victim.png");
+        fs::write(&outside, b"x").unwrap();
+
+        // A traversal path that climbs out of the captures dir into the sibling.
+        let traversal = captures
+            .0
+            .join("..")
+            .join(other.0.file_name().unwrap())
+            .join("victim.png");
+
+        let err = validate_within(&traversal, &captures.0)
+            .expect_err("a traversal path escaping the captures dir must be rejected");
+        assert!(
+            err.contains("outside the captures directory"),
+            "unexpected error: {err}"
+        );
+        assert!(outside.exists());
+    }
+
+    #[test]
+    fn validate_within_errors_when_file_is_missing() {
+        let captures = TempDir::new();
+        let missing = captures.0.join("never-existed.png");
+        let err = validate_within(&missing, &captures.0)
+            .expect_err("a missing file must error rather than validate");
+        assert!(err.contains("already deleted") || err.contains("not found"));
     }
 }

@@ -16,7 +16,7 @@ use commands::{
     native_capture_fullscreen, native_capture_interactive, native_capture_window,
     play_screenshot_sound, save_edited_image, select_directory_dialog,
     open_image_file_dialog, open_image_files_dialog, copy_file_to_temp_workspace,
-    delete_temp_workspace_file,
+    delete_temp_workspace_file, get_app_captures_dir, delete_capture_file,
 };
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -185,6 +185,8 @@ pub fn run() {
             open_image_files_dialog,
             copy_file_to_temp_workspace,
             delete_temp_workspace_file,
+            get_app_captures_dir,
+            delete_capture_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

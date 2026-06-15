@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { act, render, screen, fireEvent, within } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
 import { CaptureHistoryGallery } from "./CaptureHistoryGallery";
 import {
   captureHistoryActions,
@@ -77,17 +77,17 @@ describe("CaptureHistoryGallery — multi-select", () => {
     expect(screen.getByTestId("selection-count")).toHaveTextContent("0 selected");
   });
 
-  it("makes selected items visually distinct (a check badge appears only when selected)", () => {
+  it("makes selected items visually distinct (the checkbox reflects checked state)", () => {
     seed([A, B]);
     render(<CaptureHistoryGallery onBack={vi.fn()} />);
     const cbA = checkboxFor("a.png");
-    // Unselected: no check badge inside the item button.
-    expect(within(cbA).queryByText((_, el) => el?.tagName === "svg")).toBeNull();
+    // The dedicated checkbox control carries a check icon; selection is conveyed
+    // via aria-checked (and the filled/empty styling driven off it).
+    expect(cbA.querySelector("svg")).not.toBeNull();
+    expect(cbA).toHaveAttribute("aria-checked", "false");
 
     fireEvent.click(cbA);
-    // Selected: aria-checked flips and a badge (svg icon) is rendered in the button.
     expect(cbA).toHaveAttribute("aria-checked", "true");
-    expect(cbA.querySelector("svg")).not.toBeNull();
   });
 
   it("select-all selects every capture and reflects the count", () => {
@@ -147,5 +147,48 @@ describe("CaptureHistoryGallery — send to batch", () => {
     // The button is disabled, so clicking is a no-op.
     fireEvent.click(screen.getByRole("button", { name: /Send to Batch Resize/ }));
     expect(onSendToBatch).not.toHaveBeenCalled();
+  });
+});
+
+describe("CaptureHistoryGallery — open in editor", () => {
+  function openButtonFor(name: string): HTMLElement {
+    return screen.getByRole("button", { name: new RegExp(`Open ${name}`) });
+  }
+
+  it("clicking a capture's thumbnail opens that raw capture in the editor", () => {
+    seed([A, B, C]);
+    const onOpenCapture = vi.fn();
+    render(<CaptureHistoryGallery onBack={vi.fn()} onOpenCapture={onOpenCapture} />);
+
+    fireEvent.click(openButtonFor("b.png"));
+
+    expect(onOpenCapture).toHaveBeenCalledTimes(1);
+    const opened = onOpenCapture.mock.calls[0][0] as CaptureHistoryEntry;
+    expect(opened.id).toBe("b");
+    expect(opened.savedPath).toBe("/caps/b.png");
+  });
+
+  it("the open gesture is separate from selection (opening does not select)", () => {
+    seed([A, B]);
+    const onOpenCapture = vi.fn();
+    render(<CaptureHistoryGallery onBack={vi.fn()} onOpenCapture={onOpenCapture} />);
+
+    fireEvent.click(openButtonFor("a.png"));
+
+    // Selection count stays at zero — clicking the thumbnail opens, not selects.
+    expect(screen.getByTestId("selection-count")).toHaveTextContent("0 selected");
+    expect(checkboxFor("a.png")).toHaveAttribute("aria-checked", "false");
+    expect(onOpenCapture).toHaveBeenCalledTimes(1);
+  });
+
+  it("selecting a capture does not open it in the editor", () => {
+    seed([A, B]);
+    const onOpenCapture = vi.fn();
+    render(<CaptureHistoryGallery onBack={vi.fn()} onOpenCapture={onOpenCapture} />);
+
+    fireEvent.click(checkboxFor("a.png"));
+
+    expect(checkboxFor("a.png")).toHaveAttribute("aria-checked", "true");
+    expect(onOpenCapture).not.toHaveBeenCalled();
   });
 });

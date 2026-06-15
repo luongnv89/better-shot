@@ -14,8 +14,13 @@ import { AppWindowMac, Crop, History, ImageUp, Layers, Monitor } from "lucide-re
 import { toast } from "sonner";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { editorActions } from "@/stores/editorStore";
-import { captureHistoryActions } from "@/stores/captureHistoryStore";
-import { generateThumbnail } from "@/lib/capture-history";
+import {
+  captureHistoryActions,
+  clampMaxCaptures,
+  DEFAULT_MAX_CAPTURES,
+  type CaptureHistoryEntry,
+} from "@/stores/captureHistoryStore";
+import { recordRawCapture } from "@/lib/capture-history";
 
 // Lazy load heavy components
 const ImageEditor = lazy(() => import("./components/ImageEditor").then(m => ({ default: m.ImageEditor })));
@@ -106,11 +111,35 @@ async function restoreWindow() {
   await restoreWindowOnScreen();
 }
 
+/**
+ * Delete a single evicted raw-capture PNG from the app-data captures dir.
+ * Scoped on the Rust side to that dir; failures are swallowed so a leaked file
+ * can never break the capture flow.
+ */
+async function deleteCaptureFile(filePath: string): Promise<void> {
+  await invoke("delete_capture_file", { filePath });
+}
+
+/**
+ * Apply the configured rolling-buffer size to the store and delete the PNGs of
+ * any entries evicted by a now-smaller cap. Used both when threading the initial
+ * (hydrated) value and when the setting changes.
+ */
+function applyKeepLastCaptures(value: number) {
+  const evicted = captureHistoryActions.setMaxEntries(clampMaxCaptures(value));
+  for (const entry of evicted) {
+    deleteCaptureFile(entry.savedPath).catch((err) =>
+      console.error("Failed to delete evicted capture file:", err)
+    );
+  }
+}
+
 function App() {
   const [mode, setMode] = useState<AppMode>("main");
   const [saveDir, setSaveDir] = useState<string>("");
   const [filenamePrefix, setFilenamePrefix] = useState<string>("bettershot");
   const [copyToClipboard, setCopyToClipboard] = useState(true);
+  const [keepLastCaptures, setKeepLastCaptures] = useState<number>(DEFAULT_MAX_CAPTURES);
   const [error, setError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [tempScreenshotPath, setTempScreenshotPath] = useState<string | null>(null);
@@ -125,13 +154,24 @@ function App() {
   const [pendingBatchPaths, setPendingBatchPaths] = useState<string[]>([]);
 
   // Refs to hold current values for use in callbacks that may have stale closures
-  const settingsRef = useRef({ saveDir, copyToClipboard, tempDir, filenamePrefix });
+  const settingsRef = useRef({ saveDir, copyToClipboard, tempDir, filenamePrefix, keepLastCaptures });
   const registeredShortcutsRef = useRef<Set<string>>(new Set());
+  // Whether the capture-history store has been hydrated yet. Guards the
+  // setting-change thread so it does not race ahead of initial hydration.
+  const captureHistoryReadyRef = useRef(false);
 
   // Keep ref in sync with state
   useEffect(() => {
-    settingsRef.current = { saveDir, copyToClipboard, tempDir, filenamePrefix };
-  }, [saveDir, copyToClipboard, tempDir, filenamePrefix]);
+    settingsRef.current = { saveDir, copyToClipboard, tempDir, filenamePrefix, keepLastCaptures };
+  }, [saveDir, copyToClipboard, tempDir, filenamePrefix, keepLastCaptures]);
+
+  // Re-thread the configured buffer size into the store whenever it changes.
+  // Skipped until the initial hydrate-then-apply has run (see the mount effect)
+  // so we never re-cap a not-yet-hydrated store or double-apply the seed value.
+  useEffect(() => {
+    if (!captureHistoryReadyRef.current) return;
+    applyKeepLastCaptures(keepLastCaptures);
+  }, [keepLastCaptures]);
 
   // Load settings function
   const loadSettings = useCallback(async () => {
@@ -158,6 +198,13 @@ function App() {
         setFilenamePrefix(savedFilenamePrefix.trim());
       }
 
+      const savedKeepLast = await store.get<number>("keepLastCaptures");
+      setKeepLastCaptures(
+        savedKeepLast !== null && savedKeepLast !== undefined
+          ? clampMaxCaptures(savedKeepLast)
+          : DEFAULT_MAX_CAPTURES
+      );
+
       const savedShortcuts = await store.get<KeyboardShortcut[]>("keyboardShortcuts");
       if (savedShortcuts && savedShortcuts.length > 0) {
         // Merge saved shortcuts with defaults, preserving all saved values
@@ -176,7 +223,14 @@ function App() {
 
   // Initial app setup
   useEffect(() => {
-    const initializeApp = async () => {
+    const initializeApp = async (): Promise<number | null> => {
+      // Resolved rolling-buffer size from settings.json, threaded into the
+      // capture-history store AFTER settings load (see below) so the first apply
+      // uses the persisted N, never a stale default. Stays null if settings never
+      // loaded — the caller then SKIPS the initial re-cap rather than wrongly
+      // evicting/deleting captures hydrated under a prior larger N (the buffer
+      // lives in a separate capture-history.json that hydrates independently).
+      let resolvedKeepLast: number | null = null;
       // First get the desktop path as the default
       let desktopPath = "";
       try {
@@ -229,6 +283,13 @@ function App() {
         await store.set("filenamePrefix", finalPrefix);
         await store.save();
 
+        const savedKeepLast = await store.get<number>("keepLastCaptures");
+        resolvedKeepLast =
+          savedKeepLast !== null && savedKeepLast !== undefined
+            ? clampMaxCaptures(savedKeepLast)
+            : DEFAULT_MAX_CAPTURES;
+        setKeepLastCaptures(resolvedKeepLast);
+
         const savedShortcuts = await store.get<KeyboardShortcut[]>("keyboardShortcuts");
         if (savedShortcuts && savedShortcuts.length > 0) {
           setShortcuts(savedShortcuts);
@@ -251,14 +312,36 @@ function App() {
         if (desktopPath) {
           setSaveDir(desktopPath);
         }
+        // resolvedKeepLast stays null: settings did not load, so we must NOT
+        // re-cap the (independently hydrated) buffer against a guessed default.
       }
+      return resolvedKeepLast;
     };
 
-    initializeApp();
-
-    // Hydrate persisted capture history (fire-and-forget; failures are swallowed
-    // inside the store's initialize()).
-    captureHistoryActions.initialize();
+    // Load settings, THEN hydrate the raw-capture buffer and apply the resolved
+    // N. Sequencing matters: a hydrated list longer than N must be re-capped (and
+    // the evicted PNGs deleted) on this first thread — but only with the PERSISTED
+    // N, never the default, or restored captures would be wrongly deleted. We pass
+    // the explicit resolved value through rather than reading settingsRef, which
+    // is only refreshed after a later render commit.
+    const setupCaptureHistory = async () => {
+      const [resolvedKeepLast] = await Promise.all([
+        initializeApp(),
+        captureHistoryActions.initialize().catch((err) => {
+          console.error("Failed to initialize capture history:", err);
+        }),
+      ]);
+      // Only re-cap when settings genuinely resolved an N. If settings failed to
+      // load (resolvedKeepLast === null) we leave the hydrated buffer untouched
+      // rather than evict/delete captures against a guessed default.
+      if (resolvedKeepLast !== null) {
+        applyKeepLastCaptures(resolvedKeepLast);
+      }
+      captureHistoryReadyRef.current = true;
+    };
+    setupCaptureHistory().catch((err) =>
+      console.error("Failed to set up capture history:", err)
+    );
 
     const shouldShowOnboarding = !hasCompletedOnboarding();
     if (shouldShowOnboarding) {
@@ -278,13 +361,16 @@ function App() {
     setError(null);
 
     const appWindow = getCurrentWindow();
-    
-    // Read current settings from ref to avoid stale closure issues
-    const { tempDir: currentTempDir } = settingsRef.current;
 
     try {
       await appWindow.hide();
       await new Promise((resolve) => setTimeout(resolve, 400));
+
+      // Capture DIRECTLY into the persistent app-data captures dir so the raw PNG
+      // survives restarts and loads via convertFileSrc (it's in the $APPDATA/**
+      // asset scope). Resolving here is idempotent (create_dir_all) and wins the
+      // race against this capture even when fired early via a global shortcut.
+      const capturesDir = await invoke<string>("get_app_captures_dir");
 
       const commandMap: Record<CaptureMode, string> = {
         region: "native_capture_interactive",
@@ -293,7 +379,7 @@ function App() {
       };
 
       const screenshotPath = await invoke<string>(commandMap[captureMode], {
-        saveDir: currentTempDir,
+        saveDir: capturesDir,
       });
 
       // Get mouse position IMMEDIATELY after screenshot completes
@@ -309,6 +395,18 @@ function App() {
       }
 
       invoke("play_screenshot_sound").catch(console.error);
+
+      // SEPARABLE SEAM: record the raw capture into the rolling buffer,
+      // independently of opening the editor. recordRawCapture is fire-and-forget
+      // and fully isolated (its own promise + swallowed failure) so thumbnail/IO
+      // trouble never surfaces as a capture error or blocks editor-open — and a
+      // future "open editor immediately after capture" toggle can flip
+      // burst-capture without touching the two setMode lines below.
+      recordRawCapture({
+        path: screenshotPath,
+        addEntry: captureHistoryActions.addEntry,
+        deleteFile: deleteCaptureFile,
+      }).catch((err) => console.error("Failed to record raw capture:", err));
 
       setTempScreenshotPath(screenshotPath);
       setMode("editing");
@@ -511,23 +609,9 @@ function App() {
         duration: 4000,
       });
 
-      // Record this save in the capture history. Fire-and-forget and fully
-      // isolated: saving the file is the user's primary action and must never be
-      // blocked or failed by thumbnail work, so this runs off the save path (the
-      // local savedPath/editedImageData are unaffected by reset() below) and its
-      // failure is swallowed rather than reaching the outer save-failure catch.
-      generateThumbnail(editedImageData)
-        .then(({ thumbnail, width, height }) =>
-          captureHistoryActions.addEntry({
-            id: crypto.randomUUID(),
-            thumbnail,
-            savedPath,
-            width,
-            height,
-            createdAt: Date.now(),
-          })
-        )
-        .catch((err) => console.error("Failed to record capture history entry:", err));
+      // NOTE: capture history is recorded at CAPTURE time (see handleCapture /
+      // recordRawCapture), not here. The buffer holds raw captures only, so Save
+      // no longer adds an entry — copy-only workflows still populate the buffer.
 
       // Clean up sandboxed temp file if it came from the upload flow
       if (tempScreenshotPath?.includes("bettershot-uploads")) {
@@ -626,8 +710,14 @@ function App() {
       <Suspense fallback={<LoadingFallback />}>
         <CaptureHistoryGallery
           onBack={() => setMode("main")}
+          onOpenCapture={(entry: CaptureHistoryEntry) => {
+            // Open the raw capture in the editor. Its path is under $APPDATA/**,
+            // so it loads directly via convertFileSrc — no copy needed.
+            setTempScreenshotPath(entry.savedPath);
+            setMode("editing");
+          }}
           onSendToBatch={(entries) => {
-            // Hand the selected captures' saved on-disk paths to Batch Resize,
+            // Hand the selected captures' raw on-disk paths to Batch Resize,
             // which copies each into its sandboxed workspace and builds the
             // matching BatchItems. Switch views so the result is visible.
             setPendingBatchPaths(entries.map((e) => e.savedPath));
@@ -736,7 +826,7 @@ function App() {
             Capture history
           </Button>
           <p className="text-xs text-muted-foreground text-center text-pretty">
-            Browse thumbnails of images you've previously saved from the editor.
+            Reopen any of your most recent raw captures in the editor or send them to batch.
           </p>
         </div>
 

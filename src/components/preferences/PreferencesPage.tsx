@@ -8,6 +8,12 @@ import { Switch } from "@/components/ui/switch";
 import { BackgroundImageSelector } from "./BackgroundImageSelector";
 import { KeyboardShortcutManager } from "./KeyboardShortcutManager";
 import type { KeyboardShortcut } from "./KeyboardShortcutManager";
+import {
+  clampMaxCaptures,
+  DEFAULT_MAX_CAPTURES,
+  MIN_MAX_CAPTURES,
+  MAX_MAX_CAPTURES,
+} from "@/stores/captureHistoryStore";
 
 interface PreferencesPageProps {
   onBack: () => void;
@@ -18,6 +24,7 @@ interface GeneralSettings {
   saveDir: string;
   copyToClipboard: boolean;
   filenamePrefix: string;
+  keepLastCaptures: number;
 }
 
 export function PreferencesPage({ onBack, onSettingsChange }: PreferencesPageProps) {
@@ -25,6 +32,7 @@ export function PreferencesPage({ onBack, onSettingsChange }: PreferencesPagePro
     saveDir: "",
     copyToClipboard: true,
     filenamePrefix: "bettershot",
+    keepLastCaptures: DEFAULT_MAX_CAPTURES,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -37,11 +45,16 @@ export function PreferencesPage({ onBack, onSettingsChange }: PreferencesPagePro
         const copyToClip = await store.get<boolean>("copyToClipboard");
         const saveDir = await store.get<string>("saveDir");
         const filenamePrefix = await store.get<string>("filenamePrefix");
-        
+        const keepLastCaptures = await store.get<number>("keepLastCaptures");
+
         setSettings({
           saveDir: saveDir || "",
           copyToClipboard: copyToClip ?? true,
           filenamePrefix: filenamePrefix?.trim() || "bettershot",
+          keepLastCaptures:
+            keepLastCaptures !== null && keepLastCaptures !== undefined
+              ? clampMaxCaptures(keepLastCaptures)
+              : DEFAULT_MAX_CAPTURES,
         });
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -150,6 +163,36 @@ export function PreferencesPage({ onBack, onSettingsChange }: PreferencesPagePro
                 className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm"
               />
               <p className="text-xs text-foreground0 text-pretty">Used when naming saved screenshots and exports (prefix + timestamp).</p>
+            </div>
+
+            {/* Keep last N captures */}
+            <div className="space-y-2">
+              <label htmlFor="keep-last-captures" className="text-sm font-medium text-foreground flex items-center gap-2">
+                Keep last N captures
+              </label>
+              <input
+                id="keep-last-captures"
+                type="number"
+                min={MIN_MAX_CAPTURES}
+                max={MAX_MAX_CAPTURES}
+                step={1}
+                value={settings.keepLastCaptures}
+                onChange={(e) => {
+                  // Track the raw field locally so typing feels responsive, but
+                  // persist a clamped integer (App is the single owner of N and
+                  // re-clamps when it reads this back).
+                  const raw = e.target.valueAsNumber;
+                  setSettings((prev) => ({
+                    ...prev,
+                    keepLastCaptures: Number.isNaN(raw) ? prev.keepLastCaptures : raw,
+                  }));
+                }}
+                onBlur={() => updateSetting("keepLastCaptures", clampMaxCaptures(settings.keepLastCaptures))}
+                className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm"
+              />
+              <p className="text-xs text-foreground0 text-pretty">
+                Size of the rolling raw-capture buffer shown in Capture History (kept between {MIN_MAX_CAPTURES} and {MAX_MAX_CAPTURES}). Older captures past this limit are deleted.
+              </p>
             </div>
 
             {/* Copy to Clipboard */}
