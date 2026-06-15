@@ -32,8 +32,12 @@ function renderPanel() {
   );
 }
 
-/** Render the panel and add one image via the (mocked) file picker flow. */
-async function renderWithOneImage() {
+/**
+ * Render the panel and add one image via the (mocked) file picker flow. When
+ * `pickSize` is true (default) a size preset is also selected, so a valid resize
+ * target exists and the resized preview is allowed to render.
+ */
+async function renderWithOneImage({ pickSize = true } = {}) {
   mockInvoke.mockImplementation(async (cmd: string) => {
     if (cmd === "open_image_files_dialog") return ["/photos/shot.png"];
     if (cmd === "copy_file_to_temp_workspace") return "/tmp/shot.png";
@@ -44,6 +48,9 @@ async function renderWithOneImage() {
   );
   fireEvent.click(screen.getByText("Add files"));
   await waitFor(() => expect(screen.getByText("shot.png")).toBeInTheDocument());
+  if (pickSize) {
+    fireEvent.click(screen.getByText(MACOS_PRESETS[0].label));
+  }
   return utils;
 }
 
@@ -53,8 +60,8 @@ beforeEach(() => {
 });
 
 describe("BatchResize per-image previews", () => {
-  it("shows both an original and a resized preview for each added image", async () => {
-    await renderWithOneImage();
+  it("shows both an original and a resized preview once a size is chosen", async () => {
+    await renderWithOneImage(); // adds an image and picks a size
 
     // AC1: original preview present (alt="Original"), pointing at the source asset.
     const original = screen.getByAltText("Original") as HTMLImageElement;
@@ -71,12 +78,30 @@ describe("BatchResize per-image previews", () => {
 
   it("shows a placeholder instead of a resized image until a size is chosen", async () => {
     previewMode.value = "idle"; // hook returns {} when no valid size is set
-    await renderWithOneImage();
+    await renderWithOneImage({ pickSize: false });
 
-    // The original is always shown (AC1); the resized slot is a placeholder,
-    // so no resized <img> exists yet.
+    // The original is always shown (AC1); with no size set the resized slot is a
+    // placeholder, so no resized <img> exists yet.
     expect(screen.getByAltText("Original")).toBeInTheDocument();
     expect(screen.queryByAltText("Resized preview")).toBeNull();
+  });
+
+  it("hides the resized preview again when the width is cleared after a render", async () => {
+    // Even if the preview hook still reports a stale 'ready' url, the row must
+    // fall back to the placeholder the instant the size becomes invalid (AC3).
+    await renderWithOneImage(); // size picked → resized preview visible
+    expect(screen.getByAltText("Resized preview")).toBeInTheDocument();
+
+    // Clear the width field and blur to commit width = 0 (invalid target).
+    const widthInput = screen.getByPlaceholderText("Width");
+    fireEvent.change(widthInput, { target: { value: "" } });
+    fireEvent.blur(widthInput);
+
+    await waitFor(() =>
+      expect(screen.queryByAltText("Resized preview")).toBeNull()
+    );
+    // The original is unaffected.
+    expect(screen.getByAltText("Original")).toBeInTheDocument();
   });
 });
 

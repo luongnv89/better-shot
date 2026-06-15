@@ -104,7 +104,10 @@ function ResizedPreview({
   height: number;
 }) {
   const hasTarget = width > 0 && height > 0;
-  const status = preview?.status ?? (hasTarget ? "rendering" : "idle");
+  // Gate on hasTarget first: clearing the size after a render must fall back to
+  // the placeholder immediately, never keep showing a now-stale "ready" preview
+  // (the hook short-circuits on an invalid size without resetting per-item state).
+  const status = !hasTarget ? "idle" : (preview?.status ?? "rendering");
 
   // Constrain to the target aspect ratio within the box so the preview's shape
   // matches the export (a tall iPhone size looks tall, a wide macOS size wide).
