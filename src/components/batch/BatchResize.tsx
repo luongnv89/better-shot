@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createHighQualityCanvas } from "@/lib/canvas-utils";
 import { loadImage } from "@/hooks/usePreviewGenerator";
-import { ALL_SIZE_PRESETS } from "@/lib/size-presets";
+import { MACOS_PRESETS, IPHONE_PRESETS, type SizePreset } from "@/lib/size-presets";
 import {
   runBatchResize,
   type BatchItem,
@@ -102,6 +102,50 @@ function StatusBadge({ state }: { state: ItemState | undefined }) {
     <span style={{ fontSize: 11, color: "oklch(0.65 0.2 25)" }} title={state?.detail}>
       ✗ {state?.detail ? state.detail : "Error"}
     </span>
+  );
+}
+
+/**
+ * A platform-labelled group of size-preset chips. The header doubles as the
+ * always-visible indicator of which app each output size targets (macOS App
+ * Store vs. iPhone), so users no longer need the hover tooltip to tell them
+ * apart. The active chip is derived from the current width/height, so the
+ * selection stays in sync as sizes are picked or changed.
+ */
+function PresetGroup({
+  label,
+  presets,
+  width,
+  height,
+  onSelect,
+}: {
+  label: string;
+  presets: SizePreset[];
+  width: number;
+  height: number;
+  onSelect: (preset: SizePreset) => void;
+}) {
+  return (
+    <div>
+      <div className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+        {label}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {presets.map((preset) => {
+          const isActive = width === preset.width && height === preset.height;
+          return (
+            <button
+              key={preset.label}
+              onClick={() => onSelect(preset)}
+              className={cn("preset-chip", isActive && "active")}
+              title={preset.tooltip}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -205,6 +249,13 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
     },
     []
   );
+
+  const handleSelectPreset = useCallback((preset: SizePreset) => {
+    setWidth(preset.width);
+    setHeight(preset.height);
+    setWidthInput(String(preset.width));
+    setHeightInput(String(preset.height));
+  }, []);
 
   const handleChangeDir = useCallback(async () => {
     try {
@@ -321,29 +372,12 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
           )}
         </div>
 
-        {/* Size presets */}
+        {/* Size presets — grouped by target platform so each output size is
+            labelled (macOS App Store vs. iPhone) without needing a hover. */}
         <div className="space-y-2">
           <div className="section-title" style={{ fontSize: 12, fontWeight: 600 }}>Size</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {ALL_SIZE_PRESETS.map((preset) => {
-              const isActive = width === preset.width && height === preset.height;
-              return (
-                <button
-                  key={preset.label}
-                  onClick={() => {
-                    setWidth(preset.width);
-                    setHeight(preset.height);
-                    setWidthInput(String(preset.width));
-                    setHeightInput(String(preset.height));
-                  }}
-                  className={cn("preset-chip", isActive && "active")}
-                  title={preset.tooltip}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
-          </div>
+          <PresetGroup label="macOS App Store" presets={MACOS_PRESETS} width={width} height={height} onSelect={handleSelectPreset} />
+          <PresetGroup label="iPhone" presets={IPHONE_PRESETS} width={width} height={height} onSelect={handleSelectPreset} />
 
           {/* Custom dims */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
