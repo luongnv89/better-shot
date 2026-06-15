@@ -5,6 +5,33 @@ All notable changes to Better Shot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-16
+
+### Added
+
+- **Batch resize for multiple photos**: Select several images and resize them all at once with a single action (#7) (#9)
+- **Platform-size indicators**: Visual badges in the batch UI showing Apple Silicon vs Intel build compatibility (#10) (#12)
+- **Original and resized preview per image**: Side-by-side comparison view in the batch resize panel so you can verify quality before saving (#11) (#13)
+- **Capture history store**: Persistent recording of recent captures with a gallery view for quick access (#15) (#18)
+- **Multi-select gallery**: Select multiple captures from history and send them together to Batch Resize (#16) (#17) (#19)
+- **Rolling raw-capture buffer**: History now uses a rolling buffer for raw captures, keeping recent screenshots available without manual cleanup (#20) (#21)
+- **Slideshow view for resize previews**: Browse through batch resize previews in a full-screen slideshow mode (#14) (#22)
+
+### Documentation
+
+- **README rewritten with AIDA structure**: Sharper copy following Attention → Interest → Desire → Action framework for better onboarding (#18)
+- **Landing page hero split**: Split hero section into two columns for better visual hierarchy (#12)
+- **Landing page dominant screenshot**: Made the hero screenshot the primary visual element (#12)
+- **Landing page logo sync**: Updated stale logo assets to match the neon rebrand (#12)
+- **Changelog section with neon timeline**: Added a visual changelog timeline to the landing page (#12)
+
+### Chores
+
+- **Gitissue config**: Added balanced autopilot strategy for issue management (#15)
+- **Ignore local analytics**: Added `.gstack/` to .gitignore (#15)
+- **Ignore local scripts**: Added `scripts/` to .gitignore (#15)
+- **Disable broken Release workflow**: Temporarily disabled the CI release pipeline (#15)
+
 ## [0.3.0] - 2026-05-22
 
 ### Added
