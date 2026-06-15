@@ -119,6 +119,10 @@ function App() {
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [tempDir, setTempDir] = useState<string>("/tmp");
   const [isSelectingFile, setIsSelectingFile] = useState(false);
+  // On-disk capture paths queued from the history gallery to be ingested by
+  // Batch Resize on its next mount. Cleared once BatchResize consumes them so a
+  // later visit to Batch Resize doesn't re-import the same captures.
+  const [pendingBatchPaths, setPendingBatchPaths] = useState<string[]>([]);
 
   // Refs to hold current values for use in callbacks that may have stale closures
   const settingsRef = useRef({ saveDir, copyToClipboard, tempDir, filenamePrefix });
@@ -610,6 +614,8 @@ function App() {
           saveDir={saveDir}
           onSaveDirChange={handleSaveDirChange}
           onBack={() => setMode("main")}
+          initialHistoryPaths={pendingBatchPaths}
+          onHistoryItemsConsumed={() => setPendingBatchPaths([])}
         />
       </Suspense>
     );
@@ -618,7 +624,16 @@ function App() {
   if (mode === "history") {
     return (
       <Suspense fallback={<LoadingFallback />}>
-        <CaptureHistoryGallery onBack={() => setMode("main")} />
+        <CaptureHistoryGallery
+          onBack={() => setMode("main")}
+          onSendToBatch={(entries) => {
+            // Hand the selected captures' saved on-disk paths to Batch Resize,
+            // which copies each into its sandboxed workspace and builds the
+            // matching BatchItems. Switch views so the result is visible.
+            setPendingBatchPaths(entries.map((e) => e.savedPath));
+            setMode("batch");
+          }}
+        />
       </Suspense>
     );
   }

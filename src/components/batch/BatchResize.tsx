@@ -20,6 +20,15 @@ interface BatchResizeProps {
   saveDir: string;
   onSaveDirChange: (dir: string) => void;
   onBack: () => void;
+  /**
+   * Captures sent in from the capture-history gallery. Each is an on-disk path
+   * that is ingested through the SAME copy-to-temp-workspace + load pipeline as
+   * the file picker, producing identical {@link BatchItem}s. Consumed exactly
+   * once on arrival; `onHistoryItemsConsumed` is called afterward so the parent
+   * can clear the pending list and avoid re-ingesting on the next visit.
+   */
+  initialHistoryPaths?: string[];
+  onHistoryItemsConsumed?: () => void;
 }
 
 type ItemState = { status: BatchStatus; detail?: string };
@@ -210,7 +219,13 @@ function PresetGroup({
   );
 }
 
-export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizeProps) {
+export function BatchResize({
+  saveDir,
+  onSaveDirChange,
+  onBack,
+  initialHistoryPaths,
+  onHistoryItemsConsumed,
+}: BatchResizeProps) {
   const [state, dispatch] = useReducer(reducer, { items: [], statuses: {} });
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
@@ -244,6 +259,47 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
     dispatch({ type: "remove", id });
   }, []);
 
+  // Copy one on-disk image into the sandboxed temp workspace and add it to the
+  // batch as a BatchItem. Shared by the file picker and the capture-history
+  // entry path so both produce the identical item shape, previews, and cleanup
+  // lifecycle. Returns true if added, false if it could not be loaded (the
+  // orphaned temp copy, if any, is cleaned up on failure). Never throws.
+  const ingestPath = useCallback(async (sourcePath: string): Promise<boolean> => {
+    let workspacePath: string | null = null;
+    try {
+      // The asset protocol scope does not cover arbitrary user paths
+      // (Desktop, Downloads, the saved-capture folder, ...). Mirror the upload
+      // flow: copy into the sandboxed temp workspace, which IS in scope, then
+      // load from there.
+      workspacePath = await invoke<string>("copy_file_to_temp_workspace", {
+        sourcePath,
+      });
+      const assetUrl = convertFileSrc(workspacePath);
+      const img = await loadImage(assetUrl);
+      dispatch({
+        type: "add",
+        item: {
+          // Fresh id (not the history entry's): the same capture may be sent
+          // more than once, and a reused id would collide on React keys and the
+          // statuses map.
+          id: crypto.randomUUID(),
+          sourcePath,
+          workspacePath,
+          assetUrl,
+          // Dimensions come from the freshly loaded image, matching the picker.
+          originalWidth: img.naturalWidth,
+          originalHeight: img.naturalHeight,
+        },
+      });
+      return true;
+    } catch (err) {
+      console.error("Failed to load image", sourcePath, err);
+      // If the copy succeeded but loading failed, drop the orphaned temp file.
+      if (workspacePath) cleanupWorkspaceFile(workspacePath);
+      return false;
+    }
+  }, []);
+
   const handleAddFiles = useCallback(async () => {
     if (isRunning || isAdding) return;
     setIsAdding(true);
@@ -252,34 +308,8 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
       let added = 0;
       let skipped = 0;
       for (const path of paths) {
-        let workspacePath: string | null = null;
-        try {
-          // The asset protocol scope does not cover arbitrary user paths
-          // (Desktop, Downloads, ...). Mirror the upload flow: copy into the
-          // sandboxed temp workspace, which IS in scope, then load from there.
-          workspacePath = await invoke<string>("copy_file_to_temp_workspace", {
-            sourcePath: path,
-          });
-          const assetUrl = convertFileSrc(workspacePath);
-          const img = await loadImage(assetUrl);
-          dispatch({
-            type: "add",
-            item: {
-              id: crypto.randomUUID(),
-              sourcePath: path,
-              workspacePath,
-              assetUrl,
-              originalWidth: img.naturalWidth,
-              originalHeight: img.naturalHeight,
-            },
-          });
-          added++;
-        } catch (err) {
-          console.error("Failed to load image", path, err);
-          // If the copy succeeded but loading failed, drop the orphaned temp file.
-          if (workspacePath) cleanupWorkspaceFile(workspacePath);
-          skipped++;
-        }
+        if (await ingestPath(path)) added++;
+        else skipped++;
       }
       if (skipped > 0) {
         toast.warning(`${added} added, ${skipped} could not be loaded`);
@@ -292,7 +322,42 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
     } finally {
       setIsAdding(false);
     }
-  }, [isRunning, isAdding]);
+  }, [isRunning, isAdding, ingestPath]);
+
+  // Ingest captures sent in from the history gallery, exactly once. A history
+  // selection arrives as a list of on-disk paths; we run each through the same
+  // copy + load pipeline as the picker so the resulting items, previews, and
+  // cleanup are indistinguishable from picker items. Guarded by a ref so React
+  // StrictMode's double-invoke (and any re-render) cannot double-ingest, and the
+  // parent is told to clear its pending list so re-entering Batch Resize later
+  // does not re-import the same captures.
+  const ingestedHistoryRef = useRef(false);
+  useEffect(() => {
+    if (ingestedHistoryRef.current) return;
+    if (!initialHistoryPaths || initialHistoryPaths.length === 0) return;
+    ingestedHistoryRef.current = true;
+    const paths = initialHistoryPaths;
+    (async () => {
+      setIsAdding(true);
+      try {
+        let added = 0;
+        let skipped = 0;
+        for (const path of paths) {
+          if (await ingestPath(path)) added++;
+          else skipped++;
+        }
+        if (skipped > 0) {
+          toast.warning(`${added} added from history, ${skipped} could not be loaded`);
+        }
+      } finally {
+        setIsAdding(false);
+        onHistoryItemsConsumed?.();
+      }
+    })();
+    // Intentionally run only for the initial value: the ref guard makes this
+    // consume-once regardless of dependency churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Clamp the raw string on blur, write the result back into both the numeric
   // state used for export and the visible input field.
