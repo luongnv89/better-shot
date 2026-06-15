@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, FolderOpen, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, FolderOpen, ImagePlus, Images, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createHighQualityCanvas } from "@/lib/canvas-utils";
 import { loadImage } from "@/hooks/usePreviewGenerator";
 import { useBatchPreviews, type ItemPreview } from "@/hooks/useBatchPreviews";
+import { BatchSlideshow } from "@/components/batch/BatchSlideshow";
 import { MACOS_PRESETS, IPHONE_PRESETS, type SizePreset } from "@/lib/size-presets";
 import {
   runBatchResize,
@@ -102,15 +103,21 @@ const THUMB_BOX = 44;
  * The image is letterboxed inside a fixed box at the target's aspect ratio, so
  * `cover` crops and `fit` padding read the same as the exported file. Falls back
  * to a spinner while rendering, a dash when no size is set, and "!" on error.
+ *
+ * `box` is the square edge length to render within (default {@link THUMB_BOX} for
+ * the inline row). The slideshow reuses this component with a larger `box` to
+ * show the same already-rendered preview URL at a bigger size — no new render.
  */
-function ResizedPreview({
+export function ResizedPreview({
   preview,
   width,
   height,
+  box = THUMB_BOX,
 }: {
   preview: ItemPreview | undefined;
   width: number;
   height: number;
+  box?: number;
 }) {
   const hasTarget = width > 0 && height > 0;
   // Gate on hasTarget first: clearing the size after a render must fall back to
@@ -120,20 +127,20 @@ function ResizedPreview({
 
   // Constrain to the target aspect ratio within the box so the preview's shape
   // matches the export (a tall iPhone size looks tall, a wide macOS size wide).
-  let boxW = THUMB_BOX;
-  let boxH = THUMB_BOX;
+  let boxW = box;
+  let boxH = box;
   if (hasTarget) {
     if (width >= height) {
-      boxH = Math.max(1, Math.round((THUMB_BOX * height) / width));
+      boxH = Math.max(1, Math.round((box * height) / width));
     } else {
-      boxW = Math.max(1, Math.round((THUMB_BOX * width) / height));
+      boxW = Math.max(1, Math.round((box * width) / height));
     }
   }
 
   return (
     <div
       className="bg-muted/40 flex shrink-0 items-center justify-center overflow-hidden rounded"
-      style={{ width: THUMB_BOX, height: THUMB_BOX }}
+      style={{ width: box, height: box }}
       title={hasTarget ? `Resized to ${width}×${height}` : "Pick a size to preview the result"}
     >
       {status === "ready" && preview?.url ? (
@@ -237,6 +244,10 @@ export function BatchResize({
   const [bg, setBg] = useState<LetterboxColor>("transparent");
   const [isRunning, setIsRunning] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  // Slideshow overlay state. `slideshowIndex` only seeds which slide opens first;
+  // the slideshow owns navigation from there and reads items/previews live.
+  const [slideshowOpen, setSlideshowOpen] = useState(false);
+  const [slideshowIndex, setSlideshowIndex] = useState(0);
 
   const { items, statuses } = state;
 
@@ -465,6 +476,23 @@ export function BatchResize({
             Add files
           </Button>
 
+          {/* Slideshow trigger — gated on having at least one image, mirroring the
+              Export button's gating. Opens the overlay at the first slide; the
+              slideshow then reads items/previews/size live, so it stays in sync. */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-center"
+            onClick={() => {
+              setSlideshowIndex(0);
+              setSlideshowOpen(true);
+            }}
+            disabled={items.length === 0}
+          >
+            <Images className="size-4" aria-hidden="true" />
+            View slideshow
+          </Button>
+
           {/* File list */}
           {items.length > 0 && (
             <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
@@ -611,6 +639,19 @@ export function BatchResize({
           {isRunning && <Loader2 className="size-4 animate-spin" />}
           {isRunning ? "Exporting..." : `Export all${items.length > 0 ? ` (${items.length})` : ""}`}
         </Button>
+
+        {/* Slideshow overlay. Live props (not snapshots) so it tracks adds,
+            removes, and size/fit/bg changes while open (AC4). It reuses the
+            already-rendered `previews` URLs — no new render, no new object URLs. */}
+        <BatchSlideshow
+          items={items}
+          previews={previews}
+          width={width}
+          height={height}
+          open={slideshowOpen}
+          onOpenChange={setSlideshowOpen}
+          initialIndex={slideshowIndex}
+        />
       </div>
     </main>
   );
