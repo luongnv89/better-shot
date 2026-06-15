@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
@@ -168,5 +169,153 @@ describe("BatchResize platform-size indicators", () => {
     const iphoneGroup = screen.getByText("iPhone").parentElement as HTMLElement;
     expect(within(iphoneGroup).getByText(IPHONE_PRESETS[0].label)).toBeInTheDocument();
     expect(within(iphoneGroup).queryByText(MACOS_PRESETS[0].label)).toBeNull();
+  });
+});
+
+describe("BatchResize — capture-history ingestion", () => {
+  // Map the copy command to a deterministic per-source workspace path so we can
+  // assert the picker→workspace pipeline ran (and is shared with the history path).
+  function copyMappingInvoke() {
+    mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+      if (cmd === "open_image_files_dialog") return ["/photos/picked.png"];
+      if (cmd === "copy_file_to_temp_workspace") {
+        const src = (args as { sourcePath?: string })?.sourcePath ?? "x";
+        return `/tmp/ws/${basenameOf(src)}`;
+      }
+      return undefined;
+    });
+  }
+  function basenameOf(p: string): string {
+    return p.split(/[/\\]/).pop() ?? p;
+  }
+
+  it("ingests history captures into BatchItems with loaded dimensions and previews", async () => {
+    copyMappingInvoke();
+    render(
+      <BatchResize
+        saveDir="/out"
+        onSaveDirChange={vi.fn()}
+        onBack={vi.fn()}
+        initialHistoryPaths={["/caps/a.png", "/caps/b.png"]}
+        onHistoryItemsConsumed={vi.fn()}
+      />
+    );
+
+    // Both captures land as rows, keyed off their source basenames.
+    await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+    expect(screen.getByText("b.png")).toBeInTheDocument();
+
+    // Each was routed through the shared copy-to-temp-workspace pipeline.
+    expect(mockInvoke).toHaveBeenCalledWith("copy_file_to_temp_workspace", { sourcePath: "/caps/a.png" });
+    expect(mockInvoke).toHaveBeenCalledWith("copy_file_to_temp_workspace", { sourcePath: "/caps/b.png" });
+
+    // Dimensions come from the (mocked) loadImage — 200×100 — proving the item
+    // was built from the freshly loaded image, exactly like the picker path.
+    // There are two rows, so two dimension labels.
+    expect(screen.getAllByText("200×100")).toHaveLength(2);
+
+    // The original preview <img> points at the converted workspace asset URL,
+    // i.e. the same asset:// pipeline the picker uses (not the entry thumbnail).
+    const originals = screen.getAllByAltText("Original") as HTMLImageElement[];
+    expect(originals).toHaveLength(2);
+    expect(originals[0].src).toContain("asset://");
+    expect(originals[0].src).toContain("/tmp/ws/");
+  });
+
+  it("calls onHistoryItemsConsumed after ingesting and does not re-ingest on re-render", async () => {
+    copyMappingInvoke();
+    const onConsumed = vi.fn();
+    const { rerender } = render(
+      <BatchResize
+        saveDir="/out"
+        onSaveDirChange={vi.fn()}
+        onBack={vi.fn()}
+        initialHistoryPaths={["/caps/a.png"]}
+        onHistoryItemsConsumed={onConsumed}
+      />
+    );
+    await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+    expect(onConsumed).toHaveBeenCalledTimes(1);
+
+    const copyCalls = () =>
+      mockInvoke.mock.calls.filter((c) => c[0] === "copy_file_to_temp_workspace").length;
+    const afterFirst = copyCalls();
+    expect(afterFirst).toBe(1);
+
+    // Re-render with the same paths (simulating the parent not yet having cleared
+    // them). The consume-once ref must prevent a second ingest.
+    rerender(
+      <BatchResize
+        saveDir="/out"
+        onSaveDirChange={vi.fn()}
+        onBack={vi.fn()}
+        initialHistoryPaths={["/caps/a.png"]}
+        onHistoryItemsConsumed={onConsumed}
+      />
+    );
+    // Still exactly one row, one copy call, one consume callback.
+    expect(screen.getAllByText("a.png")).toHaveLength(1);
+    expect(copyCalls()).toBe(afterFirst);
+    expect(onConsumed).toHaveBeenCalledTimes(1);
+  });
+
+  it("ingests each history capture exactly once under StrictMode (no double copy)", async () => {
+    // StrictMode intentionally mounts → unmounts → remounts effects in dev to
+    // surface unsafe side effects. The consume-once ref must survive this and
+    // import each capture only once, with a single copy_file_to_temp_workspace
+    // per path — this is the production wrapper (see main.tsx).
+    copyMappingInvoke();
+    const onConsumed = vi.fn();
+    render(
+      <StrictMode>
+        <BatchResize
+          saveDir="/out"
+          onSaveDirChange={vi.fn()}
+          onBack={vi.fn()}
+          initialHistoryPaths={["/caps/a.png"]}
+          onHistoryItemsConsumed={onConsumed}
+        />
+      </StrictMode>
+    );
+    await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+
+    // Exactly one row and exactly one copy call despite the double mount.
+    expect(screen.getAllByText("a.png")).toHaveLength(1);
+    expect(
+      mockInvoke.mock.calls.filter((c) => c[0] === "copy_file_to_temp_workspace")
+    ).toHaveLength(1);
+  });
+
+  it("ingests nothing when the initial history list is empty", () => {
+    copyMappingInvoke();
+    const onConsumed = vi.fn();
+    render(
+      <BatchResize
+        saveDir="/out"
+        onSaveDirChange={vi.fn()}
+        onBack={vi.fn()}
+        initialHistoryPaths={[]}
+        onHistoryItemsConsumed={onConsumed}
+      />
+    );
+    // No rows, no copy, no consume callback — the empty path is a clean no-op.
+    expect(screen.queryByAltText("Original")).toBeNull();
+    expect(
+      mockInvoke.mock.calls.filter((c) => c[0] === "copy_file_to_temp_workspace")
+    ).toHaveLength(0);
+    expect(onConsumed).not.toHaveBeenCalled();
+  });
+
+  it("keeps the file-picker 'Add files' path working unchanged alongside history ingestion", async () => {
+    copyMappingInvoke();
+    // No initial history — pure picker path, the pre-existing behavior.
+    render(<BatchResize saveDir="/out" onSaveDirChange={vi.fn()} onBack={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("Add files"));
+    await waitFor(() => expect(screen.getByText("picked.png")).toBeInTheDocument());
+
+    // The picker still copies into the workspace and builds a 200×100 item.
+    expect(mockInvoke).toHaveBeenCalledWith("copy_file_to_temp_workspace", { sourcePath: "/photos/picked.png" });
+    expect(screen.getByText("200×100")).toBeInTheDocument();
   });
 });
