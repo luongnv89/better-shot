@@ -8,11 +8,12 @@ import { Store } from "@tauri-apps/plugin-store";
 // ============================================================================
 
 /**
- * A single recorded capture in the history.
+ * A single recorded raw capture in the rolling buffer.
  *
  * `thumbnail` is a small PNG data-URL (longest edge <= 320px) generated from the
- * full-resolution edited image; `width`/`height` are the *full-resolution*
- * natural dimensions of that edited image (not the thumbnail's scaled dims).
+ * raw capture file; `savedPath` points at the raw capture PNG on disk (under the
+ * app-data captures dir); `width`/`height` are the *full-resolution* natural
+ * dimensions of that raw capture (not the thumbnail's scaled dims).
  */
 export interface CaptureHistoryEntry {
   id: string;
@@ -26,12 +27,27 @@ export interface CaptureHistoryEntry {
 interface CaptureHistoryState {
   // Entries are stored newest-first (index 0 is the most recent capture).
   entries: CaptureHistoryEntry[];
+  // Rolling-buffer cap. The single owner of N is the store; App injects the
+  // user-configured value via setMaxEntries (the store never reads settings).
+  maxEntries: number;
   _isInitialized: boolean;
 }
 
 interface CaptureHistoryActions {
   initialize: () => Promise<void>;
-  addEntry: (entry: CaptureHistoryEntry) => void;
+  /**
+   * Prepend a raw capture and re-cap to `maxEntries`. Returns the entries that
+   * were evicted (pushed past the cap) so the caller can delete their PNGs from
+   * disk — the store never touches the filesystem itself.
+   */
+  addEntry: (entry: CaptureHistoryEntry) => CaptureHistoryEntry[];
+  /**
+   * Update the rolling-buffer cap and re-cap the current buffer. Returns the
+   * entries evicted by the new (smaller) cap so the caller can delete their
+   * PNGs. Persists the capped list so a restart does not rehydrate evicted
+   * entries.
+   */
+  setMaxEntries: (max: number) => CaptureHistoryEntry[];
   clearHistory: () => Promise<boolean>;
   reset: () => void;
 }
@@ -44,10 +60,21 @@ export type CaptureHistoryStore = CaptureHistoryState & CaptureHistoryActions;
 
 export const CAPTURE_HISTORY_STORE_NAME = "capture-history.json";
 export const ENTRIES_KEY = "entries";
-export const MAX_HISTORY_ENTRIES = 50;
+/** Default rolling-buffer size when the user has not configured one. */
+export const DEFAULT_MAX_CAPTURES = 10;
+/** Inclusive clamp bounds for the configurable buffer size. */
+export const MIN_MAX_CAPTURES = 1;
+export const MAX_MAX_CAPTURES = 50;
+
+/** Clamp an arbitrary (possibly user-entered) value to a valid buffer size. */
+export function clampMaxCaptures(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_MAX_CAPTURES;
+  return Math.min(MAX_MAX_CAPTURES, Math.max(MIN_MAX_CAPTURES, Math.floor(value)));
+}
 
 const INITIAL_STATE: CaptureHistoryState = {
   entries: [],
+  maxEntries: DEFAULT_MAX_CAPTURES,
   _isInitialized: false,
 };
 
@@ -123,12 +150,32 @@ export const useCaptureHistoryStore = create<CaptureHistoryStore>()(
       // Mutations
       // ========================================
       addEntry: (entry) => {
+        const max = get().maxEntries;
+        // Prepend (newest-first), then split at the cap so the tail (oldest
+        // entries pushed past N) can be surfaced to the caller for file deletion.
+        const next = [entry, ...get().entries];
+        const kept = next.slice(0, max);
+        const evicted = next.slice(max);
         set((state) => {
-          // Prepend (newest-first), then drop the oldest beyond the cap (the tail).
-          state.entries = [entry, ...state.entries].slice(0, MAX_HISTORY_ENTRIES);
+          state.entries = kept;
         });
-        // Read the post-set state so we persist the capped list, not a stale one.
-        persistEntries(get().entries);
+        // Persist the capped list, not a stale one.
+        persistEntries(kept);
+        return evicted;
+      },
+
+      setMaxEntries: (max) => {
+        const clamped = clampMaxCaptures(max);
+        const current = get().entries;
+        const kept = current.slice(0, clamped);
+        const evicted = current.slice(clamped);
+        set((state) => {
+          state.maxEntries = clamped;
+          state.entries = kept;
+        });
+        // Persist so a restart hydrates the capped list, never the evicted tail.
+        persistEntries(kept);
+        return evicted;
       },
 
       clearHistory: async () => {
@@ -168,6 +215,9 @@ export const captureHistoryActions = {
   },
   get addEntry() {
     return useCaptureHistoryStore.getState().addEntry;
+  },
+  get setMaxEntries() {
+    return useCaptureHistoryStore.getState().setMaxEntries;
   },
   get clearHistory() {
     return useCaptureHistoryStore.getState().clearHistory;

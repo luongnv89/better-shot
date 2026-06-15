@@ -10,6 +10,12 @@ import {
 interface CaptureHistoryGalleryProps {
   onBack: () => void;
   /**
+   * Open a single raw capture in the editor. Fired when the user clicks a
+   * capture's thumbnail (distinct from selecting it via its checkbox). Optional
+   * so the gallery still renders standalone in isolation tests.
+   */
+  onOpenCapture?: (entry: CaptureHistoryEntry) => void;
+  /**
    * Send the currently selected captures into the Batch Resize flow. Receives
    * the selected entries (in newest-first gallery order). Optional so the
    * gallery still renders standalone (e.g. in isolation tests) without a batch
@@ -26,13 +32,14 @@ function basename(path: string): string {
 }
 
 /**
- * Gallery of past captures. Entries are stored newest-first and shown in that
- * order. Supports transient multi-select: individual captures can be toggled,
- * select-all / clear controls act on the whole list, and the current selection
- * can be sent straight into Batch Resize. Selection is purely local UI state —
- * it is not persisted and resets when the gallery unmounts.
+ * Gallery of recent raw captures (a rolling buffer of the last N). Entries are
+ * stored newest-first and shown in that order. Clicking a capture's thumbnail
+ * reopens it in the editor; a dedicated per-capture checkbox drives transient
+ * multi-select (select-all / clear act on the whole list) and the current
+ * selection can be sent straight into Batch Resize. Selection is purely local UI
+ * state — it is not persisted and resets when the gallery unmounts.
  */
-export function CaptureHistoryGallery({ onBack, onSendToBatch }: CaptureHistoryGalleryProps) {
+export function CaptureHistoryGallery({ onBack, onOpenCapture, onSendToBatch }: CaptureHistoryGalleryProps) {
   const entries = useCaptureHistoryEntries();
   // Selected capture ids. A Set keeps toggling and membership checks O(1).
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -87,7 +94,7 @@ export function CaptureHistoryGallery({ onBack, onSendToBatch }: CaptureHistoryG
             <History className="text-muted-foreground size-10" aria-hidden="true" />
             <p className="text-foreground font-medium">No captures yet</p>
             <p className="text-muted-foreground text-sm text-pretty">
-              Edited images you save will appear here automatically.
+              Your most recent screenshots appear here automatically. Click one to reopen it in the editor.
             </p>
           </div>
         ) : (
@@ -132,39 +139,52 @@ export function CaptureHistoryGallery({ onBack, onSendToBatch }: CaptureHistoryG
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {entries.map((entry) => {
                 const isSelected = selectedIds.has(entry.id);
+                const name = basename(entry.savedPath);
                 return (
                   <div key={entry.id} className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => toggleSelected(entry.id)}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      aria-label={`Select ${basename(entry.savedPath)}`}
-                      title={entry.savedPath}
+                    <div
                       className={cn(
-                        "group bg-muted/40 relative flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 transition-colors",
+                        "group bg-muted/40 relative w-full overflow-hidden rounded-lg border-2 transition-colors",
                         isSelected
                           ? "border-[var(--cta,theme(colors.blue.500))] ring-2 ring-[var(--cta,theme(colors.blue.500))]/40"
                           : "border-border hover:border-muted-foreground/40"
                       )}
                       style={{ height: THUMB_BOX }}
                     >
-                      <img
-                        src={entry.thumbnail}
-                        alt={basename(entry.savedPath)}
-                        style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
-                      />
-                      {/* Selection check badge — only the checked state is shown,
-                          so selected items are visually distinct at a glance. */}
-                      {isSelected && (
-                        <span
-                          className="bg-[var(--cta,theme(colors.blue.500))] absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full text-white shadow"
-                          aria-hidden="true"
-                        >
-                          <Check className="size-3.5" />
-                        </span>
-                      )}
-                    </button>
+                      {/* Thumbnail click opens the raw capture in the editor. */}
+                      <button
+                        type="button"
+                        onClick={() => onOpenCapture?.(entry)}
+                        aria-label={`Open ${name}`}
+                        title={entry.savedPath}
+                        className="flex h-full w-full cursor-pointer items-center justify-center"
+                      >
+                        <img
+                          src={entry.thumbnail}
+                          alt={name}
+                          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+                        />
+                      </button>
+                      {/* Dedicated selection control, separate from the open
+                          gesture: toggles multi-select for Batch Resize. Kept as
+                          role="checkbox" + "Select <name>" so it is the a11y
+                          checkbox for the capture. */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSelected(entry.id)}
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        aria-label={`Select ${name}`}
+                        className={cn(
+                          "absolute top-1.5 right-1.5 flex size-5 cursor-pointer items-center justify-center rounded-full border shadow transition-colors",
+                          isSelected
+                            ? "bg-[var(--cta,theme(colors.blue.500))] border-transparent text-white"
+                            : "bg-background/80 border-border text-transparent hover:border-muted-foreground/60"
+                        )}
+                      >
+                        <Check className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
                     <div className="space-y-0.5 px-0.5">
                       <div
                         className="text-foreground text-xs truncate"
