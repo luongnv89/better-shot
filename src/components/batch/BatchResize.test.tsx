@@ -1,7 +1,28 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { invoke } from "@tauri-apps/api/core";
 import { BatchResize } from "./BatchResize";
 import { MACOS_PRESETS, IPHONE_PRESETS } from "@/lib/size-presets";
+
+// Stub image loading so adding files doesn't touch a real decoder, and stub the
+// preview hook so populated rows don't hit the (unavailable) jsdom canvas
+// backend — the hook's own lifecycle is covered in useBatchPreviews.test.ts.
+vi.mock("@/hooks/usePreviewGenerator", () => ({
+  loadImage: vi.fn(async () => ({ naturalWidth: 200, naturalHeight: 100 }) as HTMLImageElement),
+}));
+// Per-test control over what the preview hook reports back, so we can simulate
+// both the "rendered" and the "no size picked yet" states without a real canvas.
+const previewMode = { value: "ready" as "ready" | "idle" };
+vi.mock("@/hooks/useBatchPreviews", () => ({
+  useBatchPreviews: (items: { id: string }[]) =>
+    previewMode.value === "idle"
+      ? {}
+      : Object.fromEntries(
+          items.map((i) => [i.id, { url: `blob://preview/${i.id}`, status: "ready" }])
+        ),
+}));
+
+const mockInvoke = vi.mocked(invoke);
 
 // Render with an empty item list so no Tauri `invoke` fires on mount; this
 // isolates the size-preset UI, which is what these tests exercise.
@@ -10,6 +31,79 @@ function renderPanel() {
     <BatchResize saveDir="" onSaveDirChange={vi.fn()} onBack={vi.fn()} />
   );
 }
+
+/**
+ * Render the panel and add one image via the (mocked) file picker flow. When
+ * `pickSize` is true (default) a size preset is also selected, so a valid resize
+ * target exists and the resized preview is allowed to render.
+ */
+async function renderWithOneImage({ pickSize = true } = {}) {
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    if (cmd === "open_image_files_dialog") return ["/photos/shot.png"];
+    if (cmd === "copy_file_to_temp_workspace") return "/tmp/shot.png";
+    return undefined;
+  });
+  const utils = render(
+    <BatchResize saveDir="/out" onSaveDirChange={vi.fn()} onBack={vi.fn()} />
+  );
+  fireEvent.click(screen.getByText("Add files"));
+  await waitFor(() => expect(screen.getByText("shot.png")).toBeInTheDocument());
+  if (pickSize) {
+    fireEvent.click(screen.getByText(MACOS_PRESETS[0].label));
+  }
+  return utils;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  previewMode.value = "ready";
+});
+
+describe("BatchResize per-image previews", () => {
+  it("shows both an original and a resized preview once a size is chosen", async () => {
+    await renderWithOneImage(); // adds an image and picks a size
+
+    // AC1: original preview present (alt="Original"), pointing at the source asset.
+    const original = screen.getByAltText("Original") as HTMLImageElement;
+    expect(original).toBeInTheDocument();
+    expect(original.src).toContain("asset://");
+
+    // AC2: resized preview present alongside it (alt="Resized preview"),
+    // sourced from the hook's object URL — distinct from the original image.
+    const resized = screen.getByAltText("Resized preview") as HTMLImageElement;
+    expect(resized).toBeInTheDocument();
+    expect(resized.src).toContain("blob://preview/");
+    expect(resized.src).not.toEqual(original.src);
+  });
+
+  it("shows a placeholder instead of a resized image until a size is chosen", async () => {
+    previewMode.value = "idle"; // hook returns {} when no valid size is set
+    await renderWithOneImage({ pickSize: false });
+
+    // The original is always shown (AC1); with no size set the resized slot is a
+    // placeholder, so no resized <img> exists yet.
+    expect(screen.getByAltText("Original")).toBeInTheDocument();
+    expect(screen.queryByAltText("Resized preview")).toBeNull();
+  });
+
+  it("hides the resized preview again when the width is cleared after a render", async () => {
+    // Even if the preview hook still reports a stale 'ready' url, the row must
+    // fall back to the placeholder the instant the size becomes invalid (AC3).
+    await renderWithOneImage(); // size picked → resized preview visible
+    expect(screen.getByAltText("Resized preview")).toBeInTheDocument();
+
+    // Clear the width field and blur to commit width = 0 (invalid target).
+    const widthInput = screen.getByPlaceholderText("Width");
+    fireEvent.change(widthInput, { target: { value: "" } });
+    fireEvent.blur(widthInput);
+
+    await waitFor(() =>
+      expect(screen.queryByAltText("Resized preview")).toBeNull()
+    );
+    // The original is unaffected.
+    expect(screen.getByAltText("Original")).toBeInTheDocument();
+  });
+});
 
 describe("BatchResize platform-size indicators", () => {
   it("shows both platform group headers without hover", () => {

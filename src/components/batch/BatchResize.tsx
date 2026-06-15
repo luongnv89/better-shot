@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { ArrowLeft, FolderOpen, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, FolderOpen, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createHighQualityCanvas } from "@/lib/canvas-utils";
 import { loadImage } from "@/hooks/usePreviewGenerator";
+import { useBatchPreviews, type ItemPreview } from "@/hooks/useBatchPreviews";
 import { MACOS_PRESETS, IPHONE_PRESETS, type SizePreset } from "@/lib/size-presets";
 import {
   runBatchResize,
@@ -81,6 +82,66 @@ function cleanupWorkspaceFile(filePath: string): void {
   invoke("delete_temp_workspace_file", { filePath }).catch(() => {
     /* best effort */
   });
+}
+
+/** Fixed box the thumbnails live in, so rows stay aligned regardless of aspect. */
+const THUMB_BOX = 44;
+
+/**
+ * The resized-output thumbnail for one row. Shows the live render of the chosen
+ * width×height/fit/background so the user can eyeball the result before export.
+ * The image is letterboxed inside a fixed box at the target's aspect ratio, so
+ * `cover` crops and `fit` padding read the same as the exported file. Falls back
+ * to a spinner while rendering, a dash when no size is set, and "!" on error.
+ */
+function ResizedPreview({
+  preview,
+  width,
+  height,
+}: {
+  preview: ItemPreview | undefined;
+  width: number;
+  height: number;
+}) {
+  const hasTarget = width > 0 && height > 0;
+  // Gate on hasTarget first: clearing the size after a render must fall back to
+  // the placeholder immediately, never keep showing a now-stale "ready" preview
+  // (the hook short-circuits on an invalid size without resetting per-item state).
+  const status = !hasTarget ? "idle" : (preview?.status ?? "rendering");
+
+  // Constrain to the target aspect ratio within the box so the preview's shape
+  // matches the export (a tall iPhone size looks tall, a wide macOS size wide).
+  let boxW = THUMB_BOX;
+  let boxH = THUMB_BOX;
+  if (hasTarget) {
+    if (width >= height) {
+      boxH = Math.max(1, Math.round((THUMB_BOX * height) / width));
+    } else {
+      boxW = Math.max(1, Math.round((THUMB_BOX * width) / height));
+    }
+  }
+
+  return (
+    <div
+      className="bg-muted/40 flex shrink-0 items-center justify-center overflow-hidden rounded"
+      style={{ width: THUMB_BOX, height: THUMB_BOX }}
+      title={hasTarget ? `Resized to ${width}×${height}` : "Pick a size to preview the result"}
+    >
+      {status === "ready" && preview?.url ? (
+        <img
+          src={preview.url}
+          alt="Resized preview"
+          style={{ width: boxW, height: boxH, objectFit: "contain", display: "block" }}
+        />
+      ) : status === "rendering" ? (
+        <Loader2 className="text-muted-foreground size-3.5 animate-spin" aria-label="Rendering preview" />
+      ) : status === "error" ? (
+        <span className="text-[oklch(0.65_0.2_25)] text-xs" title="Could not render preview">!</span>
+      ) : (
+        <span className="text-muted-foreground text-xs" aria-label="No size selected">–</span>
+      )}
+    </div>
+  );
 }
 
 function StatusBadge({ state }: { state: ItemState | undefined }) {
@@ -271,6 +332,10 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
     }
   }, [saveDir, onSaveDirChange]);
 
+  // Live resized previews per item, regenerated (debounced) whenever the item
+  // list or the resize target changes. Object-URL lifecycle is owned by the hook.
+  const previews = useBatchPreviews(items, { width, height, fit, bg });
+
   const canExport = items.length > 0 && width > 0 && height > 0 && !!saveDir && !isRunning;
 
   const handleExport = useCallback(async () => {
@@ -340,15 +405,26 @@ export function BatchResize({ saveDir, onSaveDirChange, onBack }: BatchResizePro
             <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
               {items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 p-2">
-                  <img
-                    src={item.assetUrl}
-                    alt=""
-                    style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, flexShrink: 0 }}
-                  />
+                  {/* Original → resized previews, so the resize can be eyeballed
+                      before export. The arrow reads left (source) to right (output). */}
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <img
+                      src={item.assetUrl}
+                      alt="Original"
+                      title={`Original ${item.originalWidth}×${item.originalHeight}`}
+                      style={{ width: THUMB_BOX, height: THUMB_BOX, objectFit: "contain", borderRadius: 4 }}
+                      className="bg-muted/40"
+                    />
+                    <ArrowRight className="text-muted-foreground size-3.5 shrink-0" aria-label="resized to" />
+                    <ResizedPreview preview={previews[item.id]} width={width} height={height} />
+                  </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="text-sm truncate" title={item.sourcePath}>{basename(item.sourcePath)}</div>
                     <div style={{ fontSize: 11, color: "oklch(0.48 0.012 250)", fontFamily: "var(--font-mono)" }}>
                       {item.originalWidth}×{item.originalHeight}
+                      {width > 0 && height > 0 && (
+                        <span className="text-muted-foreground"> → {width}×{height}</span>
+                      )}
                     </div>
                   </div>
                   <div style={{ flexShrink: 0 }}>
