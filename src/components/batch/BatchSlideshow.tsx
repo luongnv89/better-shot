@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { ResizedPreview } from "@/components/batch/BatchResize";
+import { ResizedPreview } from "@/components/batch/ResizedPreview";
 import type { BatchItem } from "@/lib/batch-resize";
 import type { PreviewMap } from "@/hooks/useBatchPreviews";
 

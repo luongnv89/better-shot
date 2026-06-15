@@ -392,6 +392,42 @@ describe("BatchResize — slideshow", () => {
     expect(dialog.getByText("a.png")).toBeInTheDocument();
   });
 
+  it("navigates with the arrow keys while open (AC2)", async () => {
+    await renderWithTwoImages(); // two images, size picked
+
+    fireEvent.click(screen.getByText("View slideshow"));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("1 / 2")).toBeInTheDocument();
+
+    // ArrowRight advances. The handler is bound to `window`, so dispatch there.
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(dialog.getByText("2 / 2")).toBeInTheDocument();
+    expect(dialog.getByText("b.png")).toBeInTheDocument();
+
+    // ArrowLeft goes back.
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(dialog.getByText("1 / 2")).toBeInTheDocument();
+    expect(dialog.getByText("a.png")).toBeInTheDocument();
+
+    // Clamps at the start — ArrowLeft on the first slide is a no-op, not -1.
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(dialog.getByText("1 / 2")).toBeInTheDocument();
+  });
+
+  it("ignores arrow keys aimed at a form field (AC2)", async () => {
+    await renderWithTwoImages(); // two images, size picked
+
+    fireEvent.click(screen.getByText("View slideshow"));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("1 / 2")).toBeInTheDocument();
+
+    // A keystroke whose target is an <input> must be skipped (so typing a width
+    // doesn't flip slides), mirroring the ImageEditor keydown guard.
+    fireEvent.keyDown(screen.getByPlaceholderText("Width"), { key: "ArrowRight" });
+    expect(dialog.getByText("1 / 2")).toBeInTheDocument();
+    expect(dialog.getByText("a.png")).toBeInTheDocument();
+  });
+
   it("falls back to the resized placeholder when the size is cleared while open (AC4)", async () => {
     // Proves the slideshow reads width/height LIVE: the mocked useBatchPreviews
     // ignores size and keeps returning ready URLs, so the resized side can only
