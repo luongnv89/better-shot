@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { BatchResize } from "./BatchResize";
+import { BatchSlideshow } from "./BatchSlideshow";
+import type { BatchItem } from "@/lib/batch-resize";
+import type { PreviewMap } from "@/hooks/useBatchPreviews";
 import { MACOS_PRESETS, IPHONE_PRESETS } from "@/lib/size-presets";
 
 // Stub image loading so adding files doesn't touch a real decoder, and stub the
@@ -49,6 +52,32 @@ async function renderWithOneImage({ pickSize = true } = {}) {
   );
   fireEvent.click(screen.getByText("Add files"));
   await waitFor(() => expect(screen.getByText("shot.png")).toBeInTheDocument());
+  if (pickSize) {
+    fireEvent.click(screen.getByText(MACOS_PRESETS[0].label));
+  }
+  return utils;
+}
+
+/**
+ * Render the panel and add two images via the (mocked) picker, mapping each
+ * source to a per-source workspace path. Needed by the slideshow navigation
+ * tests, which require more than one slide to move between.
+ */
+async function renderWithTwoImages({ pickSize = true } = {}) {
+  mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+    if (cmd === "open_image_files_dialog") return ["/photos/a.png", "/photos/b.png"];
+    if (cmd === "copy_file_to_temp_workspace") {
+      const src = (args as { sourcePath?: string })?.sourcePath ?? "x";
+      return `/tmp/${src.split(/[/\\]/).pop()}`;
+    }
+    return undefined;
+  });
+  const utils = render(
+    <BatchResize saveDir="/out" onSaveDirChange={vi.fn()} onBack={vi.fn()} />
+  );
+  fireEvent.click(screen.getByText("Add files"));
+  await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("b.png")).toBeInTheDocument());
   if (pickSize) {
     fireEvent.click(screen.getByText(MACOS_PRESETS[0].label));
   }
@@ -317,5 +346,122 @@ describe("BatchResize — capture-history ingestion", () => {
     // The picker still copies into the workspace and builds a 200×100 item.
     expect(mockInvoke).toHaveBeenCalledWith("copy_file_to_temp_workspace", { sourcePath: "/photos/picked.png" });
     expect(screen.getByText("200×100")).toBeInTheDocument();
+  });
+});
+
+describe("BatchResize — slideshow", () => {
+  it("opens a larger slideshow showing both the original and the resized result (AC1, AC3)", async () => {
+    await renderWithOneImage(); // one image, size picked → previews ready
+
+    fireEvent.click(screen.getByText("View slideshow"));
+
+    // Scope to the dialog: the row also renders alt="Original"/"Resized preview",
+    // so unscoped queries would match multiple elements.
+    const dialog = within(screen.getByRole("dialog"));
+
+    // AC1/AC3: the slide shows the original (asset:// pipeline) AND the resized
+    // result (the hook's already-rendered object URL — no new URL is created).
+    const original = dialog.getByAltText("Original") as HTMLImageElement;
+    expect(original.src).toContain("asset://");
+    const resized = dialog.getByAltText("Resized preview") as HTMLImageElement;
+    expect(resized.src).toContain("blob://preview/");
+
+    // AC1: rendered at the larger slide box (320px), not the 44px row thumb.
+    // Readable without layout (inline style), unlike computed dimensions in jsdom.
+    expect(original.style.width).toBe("320px");
+  });
+
+  it("navigates forward and backward through the batch (AC2)", async () => {
+    await renderWithTwoImages(); // two images, size picked
+
+    fireEvent.click(screen.getByText("View slideshow"));
+    const dialog = within(screen.getByRole("dialog"));
+
+    // Opens at the first slide.
+    expect(dialog.getByText("1 / 2")).toBeInTheDocument();
+    expect(dialog.getByText("a.png")).toBeInTheDocument();
+
+    // Forward → second slide.
+    fireEvent.click(dialog.getByLabelText("Next image"));
+    expect(dialog.getByText("2 / 2")).toBeInTheDocument();
+    expect(dialog.getByText("b.png")).toBeInTheDocument();
+
+    // Backward → first slide again.
+    fireEvent.click(dialog.getByLabelText("Previous image"));
+    expect(dialog.getByText("1 / 2")).toBeInTheDocument();
+    expect(dialog.getByText("a.png")).toBeInTheDocument();
+  });
+
+  it("falls back to the resized placeholder when the size is cleared while open (AC4)", async () => {
+    // Proves the slideshow reads width/height LIVE: the mocked useBatchPreviews
+    // ignores size and keeps returning ready URLs, so the resized side can only
+    // disappear because BatchSlideshow passes the live (now 0) width/height into
+    // ResizedPreview, which gates on hasTarget first.
+    await renderWithOneImage(); // size picked → resized visible
+
+    fireEvent.click(screen.getByText("View slideshow"));
+    expect(within(screen.getByRole("dialog")).getByAltText("Resized preview")).toBeInTheDocument();
+
+    // Clear the width field and blur to commit width = 0 (invalid target).
+    const widthInput = screen.getByPlaceholderText("Width");
+    fireEvent.change(widthInput, { target: { value: "" } });
+    fireEvent.blur(widthInput);
+
+    await waitFor(() =>
+      expect(within(screen.getByRole("dialog")).queryByAltText("Resized preview")).toBeNull()
+    );
+    // The original is unaffected — it never depended on the resize target.
+    expect(within(screen.getByRole("dialog")).getByAltText("Original")).toBeInTheDocument();
+  });
+
+  it("disables the trigger when there are no images", () => {
+    renderPanel(); // empty list
+    expect(screen.getByText("View slideshow").closest("button")).toBeDisabled();
+  });
+
+  it("enables the trigger once an image is added", async () => {
+    await renderWithOneImage();
+    expect(screen.getByText("View slideshow").closest("button")).toBeEnabled();
+  });
+
+  // Crash guard (AC4) tested at the unit level: items is internal reducer state
+  // in BatchResize and the only removal control sits behind the modal overlay,
+  // so we drive BatchSlideshow directly with shrinking props. The module-level
+  // useBatchPreviews mock is irrelevant here — previews arrives as a prop.
+  it("clamps the index and does not crash when the active item is removed (AC4)", () => {
+    const makeItem = (id: string): BatchItem => ({
+      id,
+      sourcePath: `/photos/${id}.png`,
+      workspacePath: `/tmp/${id}.png`,
+      assetUrl: `asset://localhost/tmp/${id}.png`,
+      originalWidth: 200,
+      originalHeight: 100,
+    });
+    const previews: PreviewMap = {
+      a: { url: "blob://preview/a", status: "ready" },
+      b: { url: "blob://preview/b", status: "ready" },
+    };
+    const onOpenChange = vi.fn();
+    const props = {
+      previews,
+      width: 1280,
+      height: 800,
+      open: true,
+      onOpenChange,
+      initialIndex: 1,
+    };
+
+    const { rerender } = render(<BatchSlideshow items={[makeItem("a"), makeItem("b")]} {...props} />);
+    // Opened on the last slide (index 1 of 2).
+    expect(within(screen.getByRole("dialog")).getByText("2 / 2")).toBeInTheDocument();
+
+    // The active item is removed → list shrinks to one. No throw, index clamps
+    // to 0, and a valid slide is still rendered.
+    expect(() =>
+      rerender(<BatchSlideshow items={[makeItem("a")]} {...props} />)
+    ).not.toThrow();
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("1 / 1")).toBeInTheDocument();
+    expect(dialog.getByAltText("Original")).toBeInTheDocument();
   });
 });
