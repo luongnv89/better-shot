@@ -10,18 +10,21 @@ import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { Store } from "@tauri-apps/plugin-store";
 import type { KeyboardShortcut } from "./components/preferences/KeyboardShortcutManager";
 import { SettingsIcon } from "./components/SettingsIcon";
-import { AppWindowMac, Crop, ImageUp, Layers, Monitor } from "lucide-react";
+import { AppWindowMac, Crop, History, ImageUp, Layers, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { editorActions } from "@/stores/editorStore";
+import { captureHistoryActions } from "@/stores/captureHistoryStore";
+import { generateThumbnail } from "@/lib/capture-history";
 
 // Lazy load heavy components
 const ImageEditor = lazy(() => import("./components/ImageEditor").then(m => ({ default: m.ImageEditor })));
 const OnboardingFlow = lazy(() => import("./components/onboarding/OnboardingFlow").then(m => ({ default: m.OnboardingFlow })));
 const PreferencesPage = lazy(() => import("./components/preferences/PreferencesPage").then(m => ({ default: m.PreferencesPage })));
 const BatchResize = lazy(() => import("./components/batch/BatchResize").then(m => ({ default: m.BatchResize })));
+const CaptureHistoryGallery = lazy(() => import("./components/history/CaptureHistoryGallery").then(m => ({ default: m.CaptureHistoryGallery })));
 
-type AppMode = "main" | "editing" | "preferences" | "batch";
+type AppMode = "main" | "editing" | "preferences" | "batch" | "history";
 type CaptureMode = "region" | "fullscreen" | "window";
 
 // Loading fallback for lazy loaded components
@@ -248,6 +251,10 @@ function App() {
     };
 
     initializeApp();
+
+    // Hydrate persisted capture history (fire-and-forget; failures are swallowed
+    // inside the store's initialize()).
+    captureHistoryActions.initialize();
 
     const shouldShowOnboarding = !hasCompletedOnboarding();
     if (shouldShowOnboarding) {
@@ -500,6 +507,24 @@ function App() {
         duration: 4000,
       });
 
+      // Record this save in the capture history. Fire-and-forget and fully
+      // isolated: saving the file is the user's primary action and must never be
+      // blocked or failed by thumbnail work, so this runs off the save path (the
+      // local savedPath/editedImageData are unaffected by reset() below) and its
+      // failure is swallowed rather than reaching the outer save-failure catch.
+      generateThumbnail(editedImageData)
+        .then(({ thumbnail, width, height }) =>
+          captureHistoryActions.addEntry({
+            id: crypto.randomUUID(),
+            thumbnail,
+            savedPath,
+            width,
+            height,
+            createdAt: Date.now(),
+          })
+        )
+        .catch((err) => console.error("Failed to record capture history entry:", err));
+
       // Clean up sandboxed temp file if it came from the upload flow
       if (tempScreenshotPath?.includes("bettershot-uploads")) {
         invoke("delete_temp_workspace_file", { filePath: tempScreenshotPath }).catch(console.error);
@@ -590,6 +615,14 @@ function App() {
     );
   }
 
+  if (mode === "history") {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <CaptureHistoryGallery onBack={() => setMode("main")} />
+      </Suspense>
+    );
+  }
+
   return (
     <>
       <main className="min-h-dvh flex flex-col items-center justify-center p-8 bg-background text-foreground">
@@ -673,6 +706,22 @@ function App() {
           </Button>
           <p className="text-xs text-muted-foreground text-center text-pretty">
             Resize many images to a preset size and export them all at once.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <Button
+            onClick={() => setMode("history")}
+            disabled={isCapturing}
+            variant="outline"
+            size="lg"
+            className="w-full justify-center py-3 disabled:cursor-not-allowed"
+          >
+            <History className="size-4" aria-hidden="true" />
+            Capture history
+          </Button>
+          <p className="text-xs text-muted-foreground text-center text-pretty">
+            Browse thumbnails of images you've previously saved from the editor.
           </p>
         </div>
 
