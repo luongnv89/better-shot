@@ -12,7 +12,7 @@
  * screenshot size without raster artifacts.
  */
 
-export type FrameType = "none" | "terminal" | "iphone" | "macbook";
+export type FrameType = "none" | "terminal" | "iphone" | "macbook" | "side-by-side";
 
 export interface FrameDimensions {
   /** Total width of the framed composition */
@@ -557,6 +557,138 @@ export function drawMacbookFrame(
     ctx.fillStyle = MB_FOOT_COLOR;
     ctx.fill();
   });
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Side-by-side frame
+// ---------------------------------------------------------------------------
+
+/**
+ * Get dimensions for the side-by-side frame.
+ *
+ * The side-by-side frame is a single rectangular container that holds
+ * two images side by side with a small gap between them.
+ *
+ * @param leftWidth  - Width of the left image (used as reference)
+ * @param leftHeight - Height of the left image (used as reference)
+ * @param rightWidth  - Width of the right image (used as reference)
+ * @param rightHeight - Height of the right image (used as reference)
+ *
+ * Note: This overload signature differs from the standard getFrameDimensions
+ * because side-by-side takes two image dimensions instead of one.
+ * Callers should use getSideBySideFrameDimensions() directly.
+ */
+export function getSideBySideFrameDimensions(
+  leftWidth: number,
+  leftHeight: number,
+  rightWidth: number,
+  rightHeight: number
+): FrameDimensions {
+  const maxHeight = Math.max(leftHeight, rightHeight);
+  const totalWidth = leftWidth + rightWidth + 8; // 8px gap
+  const totalHeight = maxHeight;
+
+  return {
+    totalWidth,
+    totalHeight,
+    screenX: 0,
+    screenY: 0,
+    screenWidth: totalWidth,
+    screenHeight: totalHeight,
+  };
+}
+
+/**
+ * Draw the side-by-side frame.
+ *
+ * Draws a subtle container with a thin border and rounded corners,
+ * then clips and draws each image into its respective half.
+ */
+export function drawSideBySideFrame(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dims: FrameDimensions,
+  leftImage: HTMLImageElement,
+  rightImage: HTMLImageElement,
+  splitRatio: number = 0.5
+) {
+  const { totalWidth, totalHeight } = dims;
+
+  ctx.save();
+
+  // Container background (subtle dark rounded rect)
+  ctx.beginPath();
+  ctx.roundRect(x, y, totalWidth, totalHeight, 12);
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fill();
+
+  // Thin border
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Calculate split
+  const gap = 8;
+  const totalContentWidth = leftImage.width + rightImage.width;
+  const leftSlotWidth = Math.round(totalContentWidth * splitRatio);
+  const rightSlotWidth = totalContentWidth - leftSlotWidth;
+
+  const padding = 12;
+  const leftInnerWidth = leftSlotWidth - padding * 2 - Math.round(gap / 2);
+  const rightInnerWidth = rightSlotWidth - padding * 2 - Math.round(gap / 2);
+  const maxHeight = Math.max(leftImage.height, rightImage.height);
+  const slotHeight = maxHeight - padding * 2;
+
+  const leftX = x + padding + Math.round(gap / 2);
+  const leftY = y + padding;
+  const rightX = x + leftX - x + leftInnerWidth + gap + Math.round(gap / 2);
+  const rightY = y + padding;
+
+  // Draw left image (object-cover)
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(leftX, leftY, leftInnerWidth, slotHeight, 8);
+  ctx.clip();
+  const leftScale = Math.max(leftInnerWidth / leftImage.width, slotHeight / leftImage.height);
+  const leftDrawW = leftImage.width * leftScale;
+  const leftDrawH = leftImage.height * leftScale;
+  ctx.drawImage(
+    leftImage,
+    leftX + (leftInnerWidth - leftDrawW) / 2,
+    leftY + (slotHeight - leftDrawH) / 2,
+    leftDrawW,
+    leftDrawH
+  );
+  ctx.restore();
+
+  // Draw right image (object-cover)
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(rightX, rightY, rightInnerWidth, slotHeight, 8);
+  ctx.clip();
+  const rightScale = Math.max(rightInnerWidth / rightImage.width, slotHeight / rightImage.height);
+  const rightDrawW = rightImage.width * rightScale;
+  const rightDrawH = rightImage.height * rightScale;
+  ctx.drawImage(
+    rightImage,
+    rightX + (rightInnerWidth - rightDrawW) / 2,
+    rightY + (slotHeight - rightDrawH) / 2,
+    rightDrawW,
+    rightDrawH
+  );
+  ctx.restore();
+
+  // Vertical divider line
+  const dividerX = x + padding + leftInnerWidth + Math.round(gap / 2);
+  ctx.beginPath();
+  ctx.moveTo(dividerX, y + padding);
+  ctx.lineTo(dividerX, y + padding + slotHeight);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   ctx.restore();
 }
