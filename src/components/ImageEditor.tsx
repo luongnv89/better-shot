@@ -15,6 +15,7 @@ import { BackgroundSelector, gradientOptions } from "./editor/BackgroundSelector
 import { AssetGrid } from "./editor/AssetGrid";
 import { EffectsPanel } from "./editor/EffectsPanel";
 import { FrameSelector } from "./editor/FrameSelector";
+import { SideBySidePanel } from "./editor/SideBySidePanel";
 import { ImageRoundnessControl } from "./editor/ImageRoundnessControl";
 import { AnnotationCanvas } from "./editor/AnnotationCanvas";
 import { PropertiesPanel } from "./editor/PropertiesPanel";
@@ -93,6 +94,7 @@ export function ImageEditor({
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
   const [activeTab, setActiveTab] = useState<SidebarTab>("image");
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sideBySideSplitRatio, setSideBySideSplitRatio] = useState(0.5);
 
   // If annotation selected, auto-show annotation tab info
   const [, setShowAnnotationPanel] = useState(false);
@@ -200,6 +202,21 @@ export function ImageEditor({
       toast.error("Unable to open directory picker");
     }
   }, [saveDir, onSaveDirChange]);
+
+  const handleSecondImageUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const dataUrl = reader.result as string;
+      editorActions.handleSecondImageSelect(dataUrl);
+      toast.success("Second image added");
+    };
+    reader.onerror = () => toast.error("Failed to read image file");
+    reader.readAsDataURL(file);
+  }, []);
 
   const handleBackgroundUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -563,6 +580,37 @@ export function ImageEditor({
                   frameType={settings.frameType}
                   onFrameTypeChange={actions.setFrameType}
                 />
+                {settings.frameType === "side-by-side" && (
+                  <>
+                    <SideBySidePanel
+                      splitRatio={sideBySideSplitRatio}
+                      onSplitRatioChange={setSideBySideSplitRatio}
+                      onSwapImages={() => {
+                        // Swap is handled by the rendering pipeline using the split ratio
+                        // The actual swap of image sources would require additional state
+                        // For now, this resets the split to the inverse
+                        const newRatio = 1 - sideBySideSplitRatio;
+                        setSideBySideSplitRatio(Math.round(newRatio * 20) / 20);
+                      }}
+                      leftImageLabel="Image 1"
+                      rightImageLabel="Image 2"
+                    />
+                    <hr className="panel-divider" />
+                    <div className="section-header" style={{ paddingTop: 0 }}>
+                      <span className="section-title">Second Image</span>
+                    </div>
+                    <AssetGrid
+                      categories={assetCategories}
+                      selectedImage={settings.selectedImageSrc2}
+                      backgroundType={settings.backgroundType}
+                      expanded={true}
+                      uploadedImages={uploadedBackgroundImages}
+                      onImageSelect={actions.handleSecondImageSelect}
+                      onToggle={() => {}}
+                      onUpload={handleSecondImageUpload}
+                    />
+                  </>
+                )}
                 {settings.frameType === "macbook" && (
                   <div style={{ marginTop: 14, marginBottom: 2 }}>
                     <div className="section-header" style={{ paddingTop: 0 }}>
@@ -633,6 +681,9 @@ export function ImageEditor({
                   <>
                     <hr className="panel-divider" />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div className="section-header" style={{ paddingTop: 0 }}>
+                        <span className="section-title">MacBook Display</span>
+                      </div>
                       <div className="section-header" style={{ paddingTop: 0 }}>
                         <span className="section-title">MacBook Display</span>
                       </div>
