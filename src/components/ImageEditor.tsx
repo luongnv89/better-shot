@@ -34,6 +34,7 @@ import {
   useUploadedBackgroundImages,
   editorActions,
   clearPersistedEditorSettings,
+  useEditorStore,
 } from "@/stores";
 
 interface ImageEditorProps {
@@ -106,6 +107,7 @@ export function ImageEditor({
     settings,
     canvasRef,
     padding: settings.padding,
+    splitRatio: sideBySideSplitRatio,
   });
 
   const error = loadError || previewError;
@@ -586,11 +588,13 @@ export function ImageEditor({
                       splitRatio={sideBySideSplitRatio}
                       onSplitRatioChange={setSideBySideSplitRatio}
                       onSwapImages={() => {
-                        // Swap is handled by the rendering pipeline using the split ratio
-                        // The actual swap of image sources would require additional state
-                        // For now, this resets the split to the inverse
-                        const newRatio = 1 - sideBySideSplitRatio;
-                        setSideBySideSplitRatio(Math.round(newRatio * 20) / 20);
+                        useEditorStore.setState((state) => ({
+                          settings: {
+                            ...state.settings,
+                            selectedImageSrc: state.settings.selectedImageSrc2,
+                            selectedImageSrc2: state.settings.selectedImageSrc,
+                          },
+                        }));
                       }}
                       leftImageLabel="Image 1"
                       rightImageLabel="Image 2"
@@ -681,9 +685,6 @@ export function ImageEditor({
                   <>
                     <hr className="panel-divider" />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div className="section-header" style={{ paddingTop: 0 }}>
-                        <span className="section-title">MacBook Display</span>
-                      </div>
                       <div className="section-header" style={{ paddingTop: 0 }}>
                         <span className="section-title">MacBook Display</span>
                       </div>

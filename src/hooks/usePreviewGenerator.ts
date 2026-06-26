@@ -166,6 +166,7 @@ export interface PreviewGeneratorOptions {
   settings: EditorSettings;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   padding?: number;
+  splitRatio?: number;
 }
 
 export interface PreviewGeneratorResult {
@@ -187,6 +188,7 @@ export function usePreviewGenerator({
   settings,
   canvasRef,
   padding = 100,
+  splitRatio = 0.5,
 }: PreviewGeneratorOptions): PreviewGeneratorResult {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -354,7 +356,7 @@ export function usePreviewGenerator({
               frameDims,
               screenshotImage,
               secondImage,
-              0.5
+              splitRatio
             );
           } else {
             drawFrame(

@@ -706,6 +706,7 @@ export function getFrameDimensions(
     case "terminal": return getTerminalFrameDimensions(screenshotWidth, screenshotHeight);
     case "iphone":   return getIphoneFrameDimensions(screenshotWidth, screenshotHeight);
     case "macbook":  return getMacbookFrameDimensions(screenshotWidth, screenshotHeight);
+    case "side-by-side": return getSideBySideFrameDimensions(screenshotWidth, screenshotHeight, screenshotWidth, screenshotHeight);
     default:         return null;
   }
 }
