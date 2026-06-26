@@ -206,7 +206,7 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
   } = options;
 
   // When a frame is active, compute frame dimensions first so we know the total size
-  const frameDims = frameType !== "none"
+  let frameDims = frameType !== "none"
     ? getFrameDimensions(frameType, image.width, image.height)
     : null;
 
@@ -221,6 +221,8 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
       screenWidth: image.width + secondImage.width + 8,
       screenHeight: Math.max(image.height, secondImage.height),
     };
+    // Override frameDims so centering uses actual side-by-side dimensions
+    frameDims = sideBySideDims;
   }
 
   // Calculate background dimensions: use custom if provided, otherwise auto (screenshot + padding)

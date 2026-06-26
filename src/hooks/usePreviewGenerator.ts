@@ -579,6 +579,7 @@ export function usePreviewGenerator({
           macbookBgImage,
           macbookGradientImage: settings.macbookBackground.backgroundType === "gradient" ? macbookBgImage : null,
           macbookScreenshotPadding: settings.macbookScreenshotPadding,
+          sideBySideSplitRatio: settings.sideBySideSplitRatio,
         });
 
         if (annotations.length > 0) {

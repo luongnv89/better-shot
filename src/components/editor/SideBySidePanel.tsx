@@ -86,7 +86,7 @@ export const SideBySidePanel = memo(function SideBySidePanel({
         borderRadius: 6,
         fontSize: 11,
         lineHeight: 1.5,
-        color: "oklch(0.68 0.01 250)",
+        color: "oklch(0.75 0.01 250)",
         display: "flex",
         alignItems: "flex-start",
         gap: 6,
