@@ -42,6 +42,8 @@ export const SideBySidePanel = memo(function SideBySidePanel({
           style={{
             opacity: isSwapping ? 0.6 : 1,
             transition: "opacity 0.15s ease",
+            minWidth: 44,
+            minHeight: 44,
           }}
         >
           <RefreshCw className={`size-[15px] ${isSwapping ? "animate-spin" : ""}`} />
