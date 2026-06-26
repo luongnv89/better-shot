@@ -46,6 +46,7 @@ export interface EditorSettings {
   backgroundType: BackgroundType;
   customColor: string;
   selectedImageSrc: string | null;
+  selectedImageSrc2: string | null;
   gradientId: string;
   gradientSrc: string;
   gradientColors: [string, string];
@@ -110,6 +111,7 @@ interface EditorActions {
   handleMacbookImageSelect: (imageSrc: string) => void;
   setMacbookScreenshotPaddingTransient: (padding: number) => void;
   setMacbookScreenshotPadding: (padding: number) => void;
+  handleSecondImageSelect: (imageSrc: string) => void;
   
   // Transient settings (during slider drag)
   setNoiseAmountTransient: (amount: number) => void;
@@ -197,6 +199,7 @@ const DEFAULT_BACKGROUND_FILL: BackgroundFillSettings = {
 
 const DEFAULT_SETTINGS: EditorSettings = {
   ...DEFAULT_BACKGROUND_FILL,
+  selectedImageSrc2: null,
   macbookUseOuterBackground: true,
   macbookBackground: structuredClone(DEFAULT_BACKGROUND_FILL),
   macbookScreenshotPadding: 0,
@@ -240,6 +243,7 @@ type PersistedEditorSettings = {
   backgroundType?: BackgroundType;
   customColor?: string;
   selectedImage?: string | null;
+  selectedImage2?: string | null;
   gradientId?: string;
   macbookUseOuterBackground?: boolean;
   macbookScreenshotPadding?: number;
@@ -268,6 +272,7 @@ function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSett
     backgroundType: stored.backgroundType ?? DEFAULT_SETTINGS.backgroundType,
     customColor: stored.customColor ?? DEFAULT_SETTINGS.customColor,
     selectedImageSrc: resolveBackgroundPath(stored.selectedImage ?? null),
+    selectedImageSrc2: resolveBackgroundPath(stored.selectedImage2 ?? null),
     gradientId: gradientOption.id,
     gradientSrc: gradientOption.src,
     gradientColors: gradientOption.colors,
@@ -309,6 +314,7 @@ async function persistEditorSettings(settings: EditorSettings) {
   try {
     const store = await Store.load(SETTINGS_STORE_NAME);
     const storableImage = settings.selectedImageSrc ? toStorableValue(settings.selectedImageSrc) : null;
+    const storableImage2 = settings.selectedImageSrc2 ? toStorableValue(settings.selectedImageSrc2) : null;
     const storableMacbookImage = settings.macbookBackground.selectedImageSrc
       ? toStorableValue(settings.macbookBackground.selectedImageSrc)
       : null;
@@ -316,6 +322,7 @@ async function persistEditorSettings(settings: EditorSettings) {
       backgroundType: settings.backgroundType,
       customColor: settings.customColor,
       selectedImage: storableImage,
+      selectedImage2: storableImage2,
       gradientId: settings.gradientId,
       macbookUseOuterBackground: settings.macbookUseOuterBackground,
       macbookScreenshotPadding: settings.macbookScreenshotPadding,
@@ -526,6 +533,13 @@ export const useEditorStore = create<EditorStore>()(
             selectedImageSrc: imageSrc,
             backgroundType: "image",
           },
+        });
+      },
+
+      handleSecondImageSelect: (imageSrc) => {
+        get().updateSettings({
+          selectedImageSrc2: imageSrc,
+          backgroundType: "image",
         });
       },
 
@@ -925,6 +939,7 @@ export const editorActions = {
   get setMacbookSelectedImage() { return useEditorStore.getState().setMacbookSelectedImage; },
   get setMacbookGradient() { return useEditorStore.getState().setMacbookGradient; },
   get handleMacbookImageSelect() { return useEditorStore.getState().handleMacbookImageSelect; },
+  get handleSecondImageSelect() { return useEditorStore.getState().handleSecondImageSelect; },
   get setMacbookScreenshotPadding() { return useEditorStore.getState().setMacbookScreenshotPadding; },
   get setMacbookScreenshotPaddingTransient() { return useEditorStore.getState().setMacbookScreenshotPaddingTransient; },
   get setNoiseAmount() { return useEditorStore.getState().setNoiseAmount; },
