@@ -62,6 +62,7 @@ export interface EditorSettings {
   imageScalingMode: ImageScalingMode;
   imageBorderSize: number;
   frameType: FrameType;
+  sideBySideSplitRatio: number;
 }
 
 // Snapshot for undo/redo - stores complete state
@@ -157,6 +158,7 @@ interface EditorActions {
 
   // Frame
   setFrameType: (frameType: FrameType) => void;
+  setSideBySideSplitRatio: (ratio: number) => void;
 
   // Annotation actions
   addAnnotation: (annotation: Annotation) => void;
@@ -224,6 +226,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   imageScalingMode: "none",
   imageBorderSize: 0,
   frameType: "none",
+  sideBySideSplitRatio: 0.5,
 };
 
 const INITIAL_STATE: EditorState = {
@@ -262,6 +265,7 @@ type PersistedEditorSettings = {
   imageScalingMode?: ImageScalingMode;
   imageBorderSize?: number;
   frameType?: FrameType;
+  sideBySideSplitRatio?: number;
 };
 
 function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSettings {
@@ -307,6 +311,7 @@ function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSett
     imageScalingMode: stored.imageScalingMode ?? DEFAULT_SETTINGS.imageScalingMode,
     imageBorderSize: stored.imageBorderSize ?? DEFAULT_SETTINGS.imageBorderSize,
     frameType: stored.frameType ?? DEFAULT_SETTINGS.frameType,
+    sideBySideSplitRatio: stored.sideBySideSplitRatio ?? DEFAULT_SETTINGS.sideBySideSplitRatio,
   };
 }
 
@@ -353,6 +358,7 @@ async function persistEditorSettings(settings: EditorSettings) {
       imageScalingMode: settings.imageScalingMode,
       imageBorderSize: settings.imageBorderSize,
       frameType: settings.frameType,
+      sideBySideSplitRatio: settings.sideBySideSplitRatio,
     });
     await store.save();
   } catch (err) {
@@ -761,6 +767,10 @@ export const useEditorStore = create<EditorStore>()(
 
       setFrameType: (frameType) => {
         get().updateSettings({ frameType });
+      },
+
+      setSideBySideSplitRatio: (ratio) => {
+        get().updateSettings({ sideBySideSplitRatio: ratio });
       },
 
       // ========================================

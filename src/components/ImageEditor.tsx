@@ -95,7 +95,8 @@ export function ImageEditor({
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
   const [activeTab, setActiveTab] = useState<SidebarTab>("image");
   const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [sideBySideSplitRatio, setSideBySideSplitRatio] = useState(0.5);
+  const sideBySideSplitRatio = useEditorStore((s) => s.settings.sideBySideSplitRatio);
+  const setSideBySideSplitRatio = useEditorStore((s) => s.setSideBySideSplitRatio);
 
   // If annotation selected, auto-show annotation tab info
   const [, setShowAnnotationPanel] = useState(false);

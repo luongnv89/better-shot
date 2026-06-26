@@ -51,7 +51,7 @@ export const SideBySidePanel = memo(function SideBySidePanel({
       {/* Split ratio slider */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-          <span className="toggle-label">Split ratio</span>
+          <span className="toggle-label" id="split-ratio-label">Split ratio</span>
           <span className="toggle-value">{Math.round(splitRatio * 100)}%</span>
         </div>
         <Slider
@@ -62,12 +62,13 @@ export const SideBySidePanel = memo(function SideBySidePanel({
           max={0.8}
           step={0.05}
           className="studio-slider w-full"
+          aria-labelledby="split-ratio-label"
         />
         <div style={{
           display: "flex",
           justifyContent: "space-between",
           fontSize: 10,
-          color: "oklch(0.42 0.009 250)",
+          color: "oklch(0.65 0.01 250)",
           marginTop: 4,
         }}>
           <span>{leftImageLabel}</span>
