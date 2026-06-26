@@ -1,10 +1,11 @@
 import type { ShadowSettings } from "@/hooks/useEditorSettings";
-import { type FrameType, getFrameDimensions, drawFrame } from "@/lib/frame-utils";
+import { type FrameType, type FrameDimensions, getFrameDimensions, drawFrame, drawSideBySideFrame } from "@/lib/frame-utils";
 
 export type ImageScalingMode = "none" | "fit" | "fit-with-border" | "cover" | "contain";
 
 export interface RenderOptions {
   image: HTMLImageElement;
+  secondImage?: HTMLImageElement | null;
   backgroundType: "transparent" | "white" | "black" | "gray" | "gradient" | "custom" | "image";
   customColor: string;
   selectedImage: string | null;
@@ -28,6 +29,7 @@ export interface RenderOptions {
   macbookBgImage?: HTMLImageElement | null;
   macbookGradientImage?: HTMLImageElement | null;
   macbookScreenshotPadding?: number;
+  sideBySideSplitRatio?: number;
 }
 
 export interface OffsetLimits {
@@ -175,6 +177,7 @@ export function calculateOffsetLimits(
 export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasElement {
   const {
     image,
+    secondImage = null,
     backgroundType,
     customColor,
     selectedImage,
@@ -199,12 +202,26 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
     macbookBgImage,
     macbookGradientImage,
     macbookScreenshotPadding = 0,
+    sideBySideSplitRatio = 0.5,
   } = options;
 
   // When a frame is active, compute frame dimensions first so we know the total size
   const frameDims = frameType !== "none"
     ? getFrameDimensions(frameType, image.width, image.height)
     : null;
+
+  // For side-by-side, compute dimensions using both images
+  let sideBySideDims: FrameDimensions | null = null;
+  if (frameType === "side-by-side" && secondImage) {
+    sideBySideDims = {
+      totalWidth: image.width + secondImage.width + 8,
+      totalHeight: Math.max(image.height, secondImage.height),
+      screenX: 0,
+      screenY: 0,
+      screenWidth: image.width + secondImage.width + 8,
+      screenHeight: Math.max(image.height, secondImage.height),
+    };
+  }
 
   // Calculate background dimensions: use custom if provided, otherwise auto (screenshot + padding)
   // When a frame is active, the frame composite replaces the raw screenshot for sizing
@@ -214,6 +231,9 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
   if (canvasDimensions && canvasDimensions.width > 0 && canvasDimensions.height > 0) {
     bgWidth = canvasDimensions.width;
     bgHeight = canvasDimensions.height;
+  } else if (sideBySideDims) {
+    bgWidth = sideBySideDims.totalWidth + padding * 2;
+    bgHeight = sideBySideDims.totalHeight + padding * 2;
   } else if (frameDims) {
     bgWidth = frameDims.totalWidth + padding * 2;
     bgHeight = frameDims.totalHeight + padding * 2;
@@ -351,7 +371,20 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
         }
       }
 
-      drawFrame(ctx, frameType, frameX, frameY, frameDims, image, macbookDisplayCanvas, macbookScreenshotPadding);
+      if (frameType === "side-by-side" && secondImage) {
+        // Side-by-side mode: draw both images within the frame
+        drawSideBySideFrame(
+          ctx,
+          frameX,
+          frameY,
+          sideBySideDims!,
+          image,
+          secondImage,
+          sideBySideSplitRatio
+        );
+      } else {
+        drawFrame(ctx, frameType, frameX, frameY, frameDims!, image, macbookDisplayCanvas, macbookScreenshotPadding);
+      }
     } else {
       // Normal mode: draw the screenshot with border radius + shadow
       const imageCanvas = document.createElement("canvas");
