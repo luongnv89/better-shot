@@ -644,7 +644,7 @@ export function drawSideBySideFrame(
 
   const leftX = x + padding + Math.round(gap / 2);
   const leftY = y + padding;
-  const rightX = x + leftX - x + leftInnerWidth + gap + Math.round(gap / 2);
+  const rightX = leftX + leftInnerWidth + gap;
   const rightY = y + padding;
 
   // Draw left image (object-cover)

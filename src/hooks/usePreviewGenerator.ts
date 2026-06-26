@@ -232,7 +232,7 @@ export function usePreviewGenerator({
     const canvas = canvasRef.current;
 
     // When a frame is active, compute frame dimensions for canvas sizing
-    const frameDims = settingsToRender.frameType && settingsToRender.frameType !== "none"
+    let frameDims = settingsToRender.frameType && settingsToRender.frameType !== "none"
       ? getFrameDimensions(settingsToRender.frameType, screenshotImage.width, screenshotImage.height)
       : null;
 
@@ -286,6 +286,21 @@ export function usePreviewGenerator({
         if (secondSrc) {
           secondImage = secondSrc === bgSrc ? bgImage : await loadImage(secondSrc);
         }
+      }
+
+      // Override frameDims for side-by-side using actual second image dimensions
+      if (settingsToRender.frameType === "side-by-side" && secondImage) {
+        const sbGap = 8;
+        const sbTotalWidth = screenshotImage.width + secondImage.width + sbGap;
+        const sbTotalHeight = Math.max(screenshotImage.height, secondImage.height);
+        frameDims = {
+          totalWidth: sbTotalWidth,
+          totalHeight: sbTotalHeight,
+          screenX: 0,
+          screenY: 0,
+          screenWidth: sbTotalWidth,
+          screenHeight: sbTotalHeight,
+        };
       }
 
       if (currentRenderId !== renderIdRef.current) return;
