@@ -236,24 +236,6 @@ export function usePreviewGenerator({
       ? getFrameDimensions(settingsToRender.frameType, screenshotImage.width, screenshotImage.height)
       : null;
 
-    // Calculate background dimensions: use custom if provided, otherwise auto (screenshot + padding)
-    let bgWidth: number;
-    let bgHeight: number;
-
-    if (
-      settingsToRender.canvasDimensions.width > 0 &&
-      settingsToRender.canvasDimensions.height > 0
-    ) {
-      bgWidth = settingsToRender.canvasDimensions.width;
-      bgHeight = settingsToRender.canvasDimensions.height;
-    } else if (frameDims) {
-      bgWidth = frameDims.totalWidth + padding * 2;
-      bgHeight = frameDims.totalHeight + padding * 2;
-    } else {
-      bgWidth = screenshotImage.width + padding * 2;
-      bgHeight = screenshotImage.height + padding * 2;
-    }
-
     setIsGenerating(true);
     setError(null);
 
@@ -301,6 +283,25 @@ export function usePreviewGenerator({
           screenWidth: sbTotalWidth,
           screenHeight: sbTotalHeight,
         };
+      }
+
+      // Recalculate background dimensions now that frameDims may have been updated
+      // with actual second-image dimensions for side-by-side mode
+      let bgWidth: number;
+      let bgHeight: number;
+
+      if (
+        settingsToRender.canvasDimensions.width > 0 &&
+        settingsToRender.canvasDimensions.height > 0
+      ) {
+        bgWidth = settingsToRender.canvasDimensions.width;
+        bgHeight = settingsToRender.canvasDimensions.height;
+      } else if (frameDims) {
+        bgWidth = frameDims.totalWidth + padding * 2;
+        bgHeight = frameDims.totalHeight + padding * 2;
+      } else {
+        bgWidth = screenshotImage.width + padding * 2;
+        bgHeight = screenshotImage.height + padding * 2;
       }
 
       if (currentRenderId !== renderIdRef.current) return;
