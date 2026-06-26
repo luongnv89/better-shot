@@ -589,13 +589,11 @@ export function ImageEditor({
                       splitRatio={sideBySideSplitRatio}
                       onSplitRatioChange={setSideBySideSplitRatio}
                       onSwapImages={() => {
-                        useEditorStore.setState((state) => ({
-                          settings: {
-                            ...state.settings,
-                            selectedImageSrc: state.settings.selectedImageSrc2,
-                            selectedImageSrc2: state.settings.selectedImageSrc,
-                          },
-                        }));
+                        const s = useEditorStore.getState().settings;
+                        useEditorStore.getState().updateSettings({
+                          selectedImageSrc: s.selectedImageSrc2,
+                          selectedImageSrc2: s.selectedImageSrc,
+                        });
                       }}
                       leftImageLabel="Image 1"
                       rightImageLabel="Image 2"

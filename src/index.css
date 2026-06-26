@@ -306,6 +306,10 @@ input[type="number"] {
   background: oklch(0.22 0.009 250);
   color: oklch(0.80 0.01 250);
 }
+.tool-btn:focus-visible {
+  outline: 2px solid oklch(0.72 0.18 142 / 0.6);
+  outline-offset: 1px;
+}
 .tool-btn.active {
   background: oklch(0.72 0.18 142 / 0.15);
   color: oklch(0.72 0.18 142);
@@ -371,6 +375,10 @@ input[type="number"] {
 .gradient-thumb:hover {
   border-color: oklch(0.45 0.012 250);
   transform: scale(1.04);
+}
+.gradient-thumb:focus-visible {
+  outline: 2px solid oklch(0.72 0.18 142 / 0.6);
+  outline-offset: 1px;
 }
 .gradient-thumb.selected {
   border-color: oklch(0.72 0.18 142);

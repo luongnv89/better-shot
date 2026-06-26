@@ -152,7 +152,7 @@ export const FrameSelector = memo(function FrameSelector({
               }}
             >
               {preview}
-              <span style={{ fontSize: 9, color: isActive ? "oklch(0.82 0.01 250)" : "oklch(0.50 0.009 250)", letterSpacing: "0.02em" }}>
+              <span style={{ fontSize: 9, color: isActive ? "oklch(0.82 0.01 250)" : "oklch(0.50 0.009 250)", letterSpacing: "0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {label}
               </span>
               {isActive && (

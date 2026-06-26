@@ -463,7 +463,7 @@ export function usePreviewGenerator({
         console.error("Preview generation failed:", err);
       }
     }
-  }, [screenshotImage, canvasRef, padding]);
+  }, [screenshotImage, canvasRef, padding, splitRatio]);
 
   // Debounced preview generation
   useEffect(() => {
@@ -505,6 +505,7 @@ export function usePreviewGenerator({
     settings.imageScalingMode,
     settings.imageBorderSize,
     settings.frameType,
+    splitRatio,
     padding,
     canvasRef,
     generatePreview,
