@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import type { BackgroundFillSettings, EditorSettings } from "@/stores/editorStore";
 import { createHighQualityCanvas, calculateScaledImageDimensions } from "@/lib/canvas-utils";
 import { drawAnnotationOnCanvas } from "@/lib/annotation-utils";
-import { getFrameDimensions, drawFrame } from "@/lib/frame-utils";
+import { getFrameDimensions, drawFrame, drawSideBySideFrame } from "@/lib/frame-utils";
 import { Annotation } from "@/types/annotations";
 
 // Image cache with LRU-like cleanup (max 20 images)
@@ -202,6 +202,7 @@ export function usePreviewGenerator({
     return JSON.stringify({
       backgroundType: settings.backgroundType,
       selectedImageSrc: settings.selectedImageSrc,
+      selectedImageSrc2: settings.selectedImageSrc2,
       gradientId: settings.gradientId,
       gradientSrc: settings.gradientSrc,
       customColor: settings.customColor,
@@ -212,6 +213,7 @@ export function usePreviewGenerator({
   }, [
     settings.backgroundType,
     settings.selectedImageSrc,
+    settings.selectedImageSrc2,
     settings.gradientId,
     settings.gradientSrc,
     settings.customColor,
@@ -267,6 +269,21 @@ export function usePreviewGenerator({
       let macbookBgImage: HTMLImageElement | null = null;
       if (macbookBgSrc) {
         macbookBgImage = macbookBgSrc === bgSrc ? bgImage : await loadImage(macbookBgSrc);
+      }
+
+      // Load second image for side-by-side mode
+      let secondImage: HTMLImageElement | null = null;
+      if (settingsToRender.frameType === "side-by-side" && settingsToRender.selectedImageSrc2) {
+        const secondSrc = getBackgroundImageSrc({
+          backgroundType: settingsToRender.backgroundType,
+          customColor: settingsToRender.customColor,
+          selectedImageSrc: settingsToRender.selectedImageSrc2,
+          gradientSrc: settingsToRender.gradientSrc,
+          gradientColors: settingsToRender.gradientColors,
+        });
+        if (secondSrc) {
+          secondImage = secondSrc === bgSrc ? bgImage : await loadImage(secondSrc);
+        }
       }
 
       if (currentRenderId !== renderIdRef.current) return;
@@ -328,16 +345,29 @@ export function usePreviewGenerator({
             );
             applyNoise(macbookDisplayCanvas, settingsToRender.noiseAmount);
           }
-          drawFrame(
-            ctx,
-            settingsToRender.frameType,
-            frameX,
-            frameY,
-            frameDims,
-            screenshotImage,
-            macbookDisplayCanvas,
-            settingsToRender.macbookScreenshotPadding
-          );
+          if (settingsToRender.frameType === "side-by-side" && secondImage) {
+            // Side-by-side mode: draw both images within the frame
+            drawSideBySideFrame(
+              ctx,
+              frameX,
+              frameY,
+              frameDims,
+              screenshotImage,
+              secondImage,
+              0.5
+            );
+          } else {
+            drawFrame(
+              ctx,
+              settingsToRender.frameType,
+              frameX,
+              frameY,
+              frameDims,
+              screenshotImage,
+              macbookDisplayCanvas,
+              settingsToRender.macbookScreenshotPadding
+            );
+          }
         } else {
           // Normal mode: screenshot with border radius + scaling
           const imageCanvas = document.createElement("canvas");
@@ -491,8 +521,24 @@ export function usePreviewGenerator({
           macbookBgImage = macbookBgSrc === bgSrc ? bgImage : await loadImage(macbookBgSrc);
         }
 
+        // Load second image for side-by-side mode
+        let secondImage: HTMLImageElement | null = null;
+        if (settings.frameType === "side-by-side" && settings.selectedImageSrc2) {
+          const secondSrc = getBackgroundImageSrc({
+            backgroundType: settings.backgroundType,
+            customColor: settings.customColor,
+            selectedImageSrc: settings.selectedImageSrc2,
+            gradientSrc: settings.gradientSrc,
+            gradientColors: settings.gradientColors,
+          });
+          if (secondSrc) {
+            secondImage = secondSrc === bgSrc ? bgImage : await loadImage(secondSrc);
+          }
+        }
+
         const canvas = createHighQualityCanvas({
           image: screenshotImage,
+          secondImage,
           backgroundType: settings.backgroundType,
           customColor: settings.customColor,
           selectedImage: settings.selectedImageSrc,
