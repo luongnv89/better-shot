@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getContainFitRect, getMacbookFrameDimensions } from "./frame-utils";
+import { getContainFitRect, getMacbookFrameDimensions, getSideBySideFrameDimensions } from "./frame-utils";
 
 describe("frame-utils macbook sizing", () => {
   it("keeps the MacBook frame height stable for the same screenshot width", () => {
@@ -20,6 +20,31 @@ describe("frame-utils macbook sizing", () => {
 
     expect(dims.screenWidth).toBe(1280);
     expect(dims.screenHeight).toBe(800);
+  });
+});
+
+describe("frame-utils side-by-side sizing", () => {
+  it("computes total width as sum of both images plus gap", () => {
+    const dims = getSideBySideFrameDimensions(800, 600, 800, 600);
+
+    expect(dims.totalWidth).toBe(1608); // 800 + 800 + 8
+    expect(dims.totalHeight).toBe(600);
+    expect(dims.screenX).toBe(0);
+    expect(dims.screenY).toBe(0);
+  });
+
+  it("uses the maximum height of both images", () => {
+    const dims = getSideBySideFrameDimensions(800, 600, 800, 1000);
+
+    expect(dims.totalHeight).toBe(1000);
+    expect(dims.totalWidth).toBe(1608);
+  });
+
+  it("handles different image dimensions", () => {
+    const dims = getSideBySideFrameDimensions(1920, 1080, 1280, 720);
+
+    expect(dims.totalWidth).toBe(1920 + 1280 + 8);
+    expect(dims.totalHeight).toBe(1080);
   });
 });
 

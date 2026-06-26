@@ -693,3 +693,139 @@ describe("editorStore - canvas dimensions feature", () => {
     });
   });
 });
+
+describe("editorStore - side-by-side second image", () => {
+  beforeEach(() => {
+    act(() => {
+      editorActions.reset();
+    });
+  });
+
+  describe("initial state", () => {
+    it("should have null as default for selectedImageSrc2", () => {
+      const state = useEditorStore.getState();
+      expect(state.settings.selectedImageSrc2).toBeNull();
+    });
+
+    it("should include selectedImageSrc2 in settings", () => {
+      const { result } = renderHook(() => useSettings());
+      expect(result.current.selectedImageSrc2).toBeNull();
+    });
+  });
+
+  describe("handleSecondImageSelect", () => {
+    it("should set the second image source", () => {
+      act(() => {
+        editorActions.handleSecondImageSelect("data:image/png;base64,test2");
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.settings.selectedImageSrc2).toBe("data:image/png;base64,test2");
+    });
+
+    it("should set background type to image", () => {
+      act(() => {
+        editorActions.setBackgroundType("white");
+        editorActions.handleSecondImageSelect("data:image/png;base64,test2");
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.settings.backgroundType).toBe("image");
+    });
+
+    it("should push to history", () => {
+      const initialHistoryLength = useEditorStore.getState().past.length;
+
+      act(() => {
+        editorActions.handleSecondImageSelect("data:image/png;base64,test2");
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.past.length).toBe(initialHistoryLength + 1);
+    });
+
+    it("should clear future history on commit", () => {
+      // Setup: make a change and undo it
+      act(() => {
+        editorActions.handleSecondImageSelect("data:image/png;base64,test1");
+        editorActions.undo();
+      });
+
+      expect(useEditorStore.getState().future.length).toBeGreaterThan(0);
+
+      // Now commit a new change
+      act(() => {
+        editorActions.handleSecondImageSelect("data:image/png;base64,test2");
+      });
+
+      expect(useEditorStore.getState().future.length).toBe(0);
+    });
+  });
+
+  describe("undo/redo with second image", () => {
+    it("should undo second image changes", () => {
+      act(() => {
+        editorActions.handleSecondImageSelect("data:image/png;base64,test");
+      });
+
+      expect(useEditorStore.getState().settings.selectedImageSrc2).toBe("data:image/png;base64,test");
+
+      act(() => {
+        editorActions.undo();
+      });
+
+      expect(useEditorStore.getState().settings.selectedImageSrc2).toBeNull();
+    });
+
+    it("should redo second image changes", () => {
+      act(() => {
+        editorActions.handleSecondImageSelect("data:image/png;base64,test");
+        editorActions.undo();
+      });
+
+      expect(useEditorStore.getState().settings.selectedImageSrc2).toBeNull();
+
+      act(() => {
+        editorActions.redo();
+      });
+
+      expect(useEditorStore.getState().settings.selectedImageSrc2).toBe("data:image/png;base64,test");
+    });
+  });
+
+  describe("reset", () => {
+    it("should reset second image to null", () => {
+      act(() => {
+        editorActions.handleSecondImageSelect("data:image/png;base64,test");
+      });
+
+      expect(useEditorStore.getState().settings.selectedImageSrc2).toBe("data:image/png;base64,test");
+
+      act(() => {
+        editorActions.reset();
+      });
+
+      expect(useEditorStore.getState().settings.selectedImageSrc2).toBeNull();
+    });
+  });
+
+  describe("second image is independent of first image", () => {
+    it("should not affect the first image when setting second image", () => {
+      act(() => {
+        editorActions.handleImageSelect("data:image/png;base64,test1");
+        editorActions.handleSecondImageSelect("data:image/png;base64,test2");
+      });
+
+      const state = useEditorStore.getState();
+      expect(state.settings.selectedImageSrc).toBe("data:image/png;base64,test1");
+      expect(state.settings.selectedImageSrc2).toBe("data:image/png;base64,test2");
+    });
+  });
+
+  describe("handleSecondImageSelect action export", () => {
+    it("should be accessible via editorActions", () => {
+      expect(editorActions.handleSecondImageSelect).toBeDefined();
+      expect(typeof editorActions.handleSecondImageSelect).toBe("function");
+    });
+  });
+});
