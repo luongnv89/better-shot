@@ -5,6 +5,12 @@ All notable changes to Better Shot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-06-28
+
+### Added
+
+- **Side-by-side photo comparison**: Place two photos in a single frame for visual comparison via a new "Side by side" frame type. Fill either slot from an upload, drag-and-drop, or the capture-history picker, adjust the split with a persisted ratio slider, and swap the two images. Second-image state and the split ratio persist across sessions (#23) (#24)
+
 ## [0.4.0] - 2026-06-16
 
 ### Added
