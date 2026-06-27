@@ -94,6 +94,22 @@ const FRAME_OPTIONS: FrameOption[] = [
       </svg>
     ),
   },
+  {
+    type: "side-by-side",
+    label: "Side by side",
+    preview: (
+      <svg width="34" height="22" viewBox="0 0 34 22" fill="none">
+        {/* Container */}
+        <rect x="0.5" y="0.5" width="33" height="21" rx="3.5" fill="#1a1a1a" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+        {/* Left image */}
+        <rect x="2.5" y="2.5" width="13" height="17" rx="2.5" fill="#2d63d8" />
+        {/* Divider */}
+        <line x1="17" y1="2.5" x2="17" y2="19.5" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        {/* Right image */}
+        <rect x="18.5" y="2.5" width="13" height="17" rx="2.5" fill="#8b5cf6" />
+      </svg>
+    ),
+  },
 ];
 
 interface FrameSelectorProps {
@@ -110,7 +126,7 @@ export const FrameSelector = memo(function FrameSelector({
       <div className="section-header" style={{ paddingTop: 0 }}>
         <span className="section-title">Frame</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
         {FRAME_OPTIONS.map(({ type, label, preview }) => {
           const isActive = frameType === type;
           return (
@@ -136,7 +152,7 @@ export const FrameSelector = memo(function FrameSelector({
               }}
             >
               {preview}
-              <span style={{ fontSize: 9, color: isActive ? "oklch(0.82 0.01 250)" : "oklch(0.50 0.009 250)", letterSpacing: "0.02em" }}>
+              <span style={{ fontSize: 9, color: isActive ? "oklch(0.82 0.01 250)" : "oklch(0.65 0.009 250)", letterSpacing: "0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {label}
               </span>
               {isActive && (

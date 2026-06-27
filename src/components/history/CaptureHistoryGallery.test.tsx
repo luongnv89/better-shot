@@ -150,6 +150,60 @@ describe("CaptureHistoryGallery — send to batch", () => {
   });
 });
 
+describe("CaptureHistoryGallery — compare side-by-side", () => {
+  const compareButton = () => screen.getByRole("button", { name: /Compare side-by-side/ });
+
+  it("only renders the compare button when onCompareSideBySide is provided", () => {
+    seed([A, B]);
+    const { rerender } = render(<CaptureHistoryGallery onBack={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /Compare side-by-side/ })).toBeNull();
+
+    rerender(<CaptureHistoryGallery onBack={vi.fn()} onCompareSideBySide={vi.fn()} />);
+    expect(compareButton()).toBeInTheDocument();
+  });
+
+  it("is enabled only when exactly two captures are selected", () => {
+    seed([A, B, C]);
+    render(<CaptureHistoryGallery onBack={vi.fn()} onCompareSideBySide={vi.fn()} />);
+    // 0 selected → disabled
+    expect(compareButton()).toBeDisabled();
+
+    fireEvent.click(checkboxFor("a.png")); // 1 selected → still disabled
+    expect(compareButton()).toBeDisabled();
+
+    fireEvent.click(checkboxFor("b.png")); // 2 selected → enabled
+    expect(compareButton()).toBeEnabled();
+
+    fireEvent.click(checkboxFor("c.png")); // 3 selected → disabled again
+    expect(compareButton()).toBeDisabled();
+  });
+
+  it("passes the two selected captures in gallery order (Image 1, Image 2)", () => {
+    seed([A, B, C]); // gallery order: A (newest), B, C
+    const onCompareSideBySide = vi.fn();
+    render(<CaptureHistoryGallery onBack={vi.fn()} onCompareSideBySide={onCompareSideBySide} />);
+
+    // Select C then A (out of click order) — must arrive as [A, C] (gallery order).
+    fireEvent.click(checkboxFor("c.png"));
+    fireEvent.click(checkboxFor("a.png"));
+    fireEvent.click(compareButton());
+
+    expect(onCompareSideBySide).toHaveBeenCalledTimes(1);
+    const sent = onCompareSideBySide.mock.calls[0][0] as CaptureHistoryEntry[];
+    expect(sent.map((e) => e.id)).toEqual(["a", "c"]);
+  });
+
+  it("does not fire when the selection is not exactly two", () => {
+    seed([A, B, C]);
+    const onCompareSideBySide = vi.fn();
+    render(<CaptureHistoryGallery onBack={vi.fn()} onCompareSideBySide={onCompareSideBySide} />);
+
+    fireEvent.click(checkboxFor("a.png")); // 1 selected — button disabled
+    fireEvent.click(compareButton());
+    expect(onCompareSideBySide).not.toHaveBeenCalled();
+  });
+});
+
 describe("CaptureHistoryGallery — open in editor", () => {
   function openButtonFor(name: string): HTMLElement {
     return screen.getByRole("button", { name: new RegExp(`Open ${name}`) });

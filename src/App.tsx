@@ -152,6 +152,11 @@ function App() {
   // Batch Resize on its next mount. Cleared once BatchResize consumes them so a
   // later visit to Batch Resize doesn't re-import the same captures.
   const [pendingBatchPaths, setPendingBatchPaths] = useState<string[]>([]);
+  // On-disk capture path queued from the history gallery's "Compare side-by-side"
+  // action. The editor opens with Image 1 = tempScreenshotPath and consumes this
+  // as Image 2 once it has initialized. Cleared on consume so re-entering the
+  // editor doesn't re-apply it.
+  const [pendingSideBySideSecondPath, setPendingSideBySideSecondPath] = useState<string | null>(null);
 
   // Refs to hold current values for use in callbacks that may have stale closures
   const settingsRef = useRef({ saveDir, copyToClipboard, tempDir, filenamePrefix, keepLastCaptures });
@@ -663,6 +668,8 @@ function App() {
           onCancel={handleEditorCancel}
           saveDir={saveDir}
           onSaveDirChange={handleSaveDirChange}
+          pendingSideBySideSecondPath={pendingSideBySideSecondPath}
+          onSideBySideSecondPathConsumed={() => setPendingSideBySideSecondPath(null)}
         />
       </Suspense>
     );
@@ -722,6 +729,17 @@ function App() {
             // matching BatchItems. Switch views so the result is visible.
             setPendingBatchPaths(entries.map((e) => e.savedPath));
             setMode("batch");
+          }}
+          onCompareSideBySide={(entries) => {
+            // Open the editor in side-by-side mode with the two selected
+            // captures: first selection becomes Image 1 (the editor's main
+            // capture), second becomes the pending Image 2 the editor applies
+            // after it initializes.
+            const [first, second] = entries;
+            if (!first || !second) return;
+            setPendingSideBySideSecondPath(second.savedPath);
+            setTempScreenshotPath(first.savedPath);
+            setMode("editing");
           }}
         />
       </Suspense>

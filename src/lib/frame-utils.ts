@@ -12,7 +12,7 @@
  * screenshot size without raster artifacts.
  */
 
-export type FrameType = "none" | "terminal" | "iphone" | "macbook";
+export type FrameType = "none" | "terminal" | "iphone" | "macbook" | "side-by-side";
 
 export interface FrameDimensions {
   /** Total width of the framed composition */
@@ -562,6 +562,137 @@ export function drawMacbookFrame(
 }
 
 // ---------------------------------------------------------------------------
+// Side-by-side frame
+// ---------------------------------------------------------------------------
+
+/**
+ * Get dimensions for the side-by-side frame.
+ *
+ * The side-by-side frame is a single rectangular container that holds
+ * two images side by side with a small gap between them.
+ *
+ * @param leftWidth  - Width of the left image (used as reference)
+ * @param leftHeight - Height of the left image (used as reference)
+ * @param rightWidth  - Width of the right image (used as reference)
+ * @param rightHeight - Height of the right image (used as reference)
+ *
+ * Note: This overload signature differs from the standard getFrameDimensions
+ * because side-by-side takes two image dimensions instead of one.
+ * Callers should use getSideBySideFrameDimensions() directly.
+ */
+export function getSideBySideFrameDimensions(
+  leftWidth: number,
+  leftHeight: number,
+  rightWidth: number,
+  rightHeight: number
+): FrameDimensions {
+  const maxHeight = Math.max(leftHeight, rightHeight);
+  const totalWidth = leftWidth + rightWidth;
+  const totalHeight = maxHeight;
+
+  return {
+    totalWidth,
+    totalHeight,
+    screenX: 0,
+    screenY: 0,
+    screenWidth: totalWidth,
+    screenHeight: totalHeight,
+  };
+}
+
+export interface SideBySideShadow {
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+  opacity: number;
+}
+
+export interface SideBySideOptions {
+  splitRatio?: number;
+  /** Corner radius applied to each photo. */
+  borderRadius?: number;
+  /** Drop shadow drawn under each photo. Omit/null to disable. */
+  shadow?: SideBySideShadow | null;
+}
+
+/** Fraction of the composition width reserved as the gap between the two photos. */
+const SIDE_BY_SIDE_GAP_RATIO = 0.04;
+
+/**
+ * Draw the side-by-side composition.
+ *
+ * Both photos sit on the shared canvas background. Each is letterboxed
+ * ("contain") inside its slot so the whole screenshot is visible and the
+ * shared background shows through around and between them. A gap separates
+ * the two slots, and each photo gets rounded corners plus an optional drop
+ * shadow so it reads as floating on top of the single background.
+ */
+export function drawSideBySideFrame(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dims: FrameDimensions,
+  leftImage: HTMLImageElement,
+  rightImage: HTMLImageElement,
+  options: SideBySideOptions = {}
+) {
+  const { splitRatio = 0.5, borderRadius = 0, shadow = null } = options;
+  const { totalWidth, totalHeight } = dims;
+
+  const gap = Math.round(totalWidth * SIDE_BY_SIDE_GAP_RATIO);
+  const contentWidth = totalWidth - gap;
+  const leftSlotWidth = Math.round(contentWidth * splitRatio);
+  const rightSlotWidth = contentWidth - leftSlotWidth;
+  const leftX = x;
+  const rightX = x + leftSlotWidth + gap;
+
+  const drawContainedImage = (
+    source: HTMLImageElement,
+    slotX: number,
+    slotY: number,
+    slotWidth: number,
+    slotHeight: number
+  ) => {
+    // Letterbox the photo inside its slot (whole image visible, background shows through).
+    const fitted = getContainFitRect(
+      source.width,
+      source.height,
+      slotX,
+      slotY,
+      slotWidth,
+      slotHeight
+    );
+    // Keep the corner radius sane for small photos.
+    const radius = Math.max(0, Math.min(borderRadius, fitted.width / 2, fitted.height / 2));
+
+    // Shadow pass: draw a rounded rect (no clip) so the shadow isn't cut off.
+    if (shadow && shadow.opacity > 0) {
+      ctx.save();
+      ctx.shadowColor = `rgba(0, 0, 0, ${shadow.opacity / 100})`;
+      ctx.shadowBlur = shadow.blur;
+      ctx.shadowOffsetX = shadow.offsetX;
+      ctx.shadowOffsetY = shadow.offsetY;
+      ctx.beginPath();
+      ctx.roundRect(fitted.x, fitted.y, fitted.width, fitted.height, radius);
+      ctx.fillStyle = "#000000";
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Image pass: clip to the rounded rect and draw the photo.
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(fitted.x, fitted.y, fitted.width, fitted.height, radius);
+    ctx.clip();
+    ctx.drawImage(source, fitted.x, fitted.y, fitted.width, fitted.height);
+    ctx.restore();
+  };
+
+  drawContainedImage(leftImage, leftX, y, leftSlotWidth, totalHeight);
+  drawContainedImage(rightImage, rightX, y, rightSlotWidth, totalHeight);
+}
+
+// ---------------------------------------------------------------------------
 // Unified helpers
 // ---------------------------------------------------------------------------
 
@@ -574,6 +705,7 @@ export function getFrameDimensions(
     case "terminal": return getTerminalFrameDimensions(screenshotWidth, screenshotHeight);
     case "iphone":   return getIphoneFrameDimensions(screenshotWidth, screenshotHeight);
     case "macbook":  return getMacbookFrameDimensions(screenshotWidth, screenshotHeight);
+    case "side-by-side": return getSideBySideFrameDimensions(screenshotWidth, screenshotHeight, screenshotWidth, screenshotHeight);
     default:         return null;
   }
 }

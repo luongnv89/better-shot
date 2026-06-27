@@ -6,6 +6,7 @@ import { gradientOptions, type GradientOption } from "@/components/editor/Backgr
 import { resolveBackgroundPath, getDefaultBackgroundPath, toStorableValue } from "@/lib/asset-registry";
 import { Annotation } from "@/types/annotations";
 import type { FrameType } from "@/lib/frame-utils";
+import { clampSplitRatio } from "@/lib/side-by-side-utils";
 
 // ============================================================================
 // Types
@@ -46,6 +47,7 @@ export interface EditorSettings {
   backgroundType: BackgroundType;
   customColor: string;
   selectedImageSrc: string | null;
+  selectedImageSrc2: string | null;
   gradientId: string;
   gradientSrc: string;
   gradientColors: [string, string];
@@ -61,6 +63,7 @@ export interface EditorSettings {
   imageScalingMode: ImageScalingMode;
   imageBorderSize: number;
   frameType: FrameType;
+  sideBySideSplitRatio: number;
 }
 
 // Snapshot for undo/redo - stores complete state
@@ -110,6 +113,7 @@ interface EditorActions {
   handleMacbookImageSelect: (imageSrc: string) => void;
   setMacbookScreenshotPaddingTransient: (padding: number) => void;
   setMacbookScreenshotPadding: (padding: number) => void;
+  handleSecondImageSelect: (imageSrc: string) => void;
   
   // Transient settings (during slider drag)
   setNoiseAmountTransient: (amount: number) => void;
@@ -155,6 +159,7 @@ interface EditorActions {
 
   // Frame
   setFrameType: (frameType: FrameType) => void;
+  setSideBySideSplitRatio: (ratio: number) => void;
 
   // Annotation actions
   addAnnotation: (annotation: Annotation) => void;
@@ -197,6 +202,7 @@ const DEFAULT_BACKGROUND_FILL: BackgroundFillSettings = {
 
 const DEFAULT_SETTINGS: EditorSettings = {
   ...DEFAULT_BACKGROUND_FILL,
+  selectedImageSrc2: null,
   macbookUseOuterBackground: true,
   macbookBackground: structuredClone(DEFAULT_BACKGROUND_FILL),
   macbookScreenshotPadding: 0,
@@ -221,6 +227,7 @@ const DEFAULT_SETTINGS: EditorSettings = {
   imageScalingMode: "none",
   imageBorderSize: 0,
   frameType: "none",
+  sideBySideSplitRatio: 0.5,
 };
 
 const INITIAL_STATE: EditorState = {
@@ -240,6 +247,7 @@ type PersistedEditorSettings = {
   backgroundType?: BackgroundType;
   customColor?: string;
   selectedImage?: string | null;
+  selectedImage2?: string | null;
   gradientId?: string;
   macbookUseOuterBackground?: boolean;
   macbookScreenshotPadding?: number;
@@ -258,6 +266,7 @@ type PersistedEditorSettings = {
   imageScalingMode?: ImageScalingMode;
   imageBorderSize?: number;
   frameType?: FrameType;
+  sideBySideSplitRatio?: number;
 };
 
 function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSettings {
@@ -268,6 +277,7 @@ function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSett
     backgroundType: stored.backgroundType ?? DEFAULT_SETTINGS.backgroundType,
     customColor: stored.customColor ?? DEFAULT_SETTINGS.customColor,
     selectedImageSrc: resolveBackgroundPath(stored.selectedImage ?? null),
+    selectedImageSrc2: resolveBackgroundPath(stored.selectedImage2 ?? null),
     gradientId: gradientOption.id,
     gradientSrc: gradientOption.src,
     gradientColors: gradientOption.colors,
@@ -302,6 +312,7 @@ function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSett
     imageScalingMode: stored.imageScalingMode ?? DEFAULT_SETTINGS.imageScalingMode,
     imageBorderSize: stored.imageBorderSize ?? DEFAULT_SETTINGS.imageBorderSize,
     frameType: stored.frameType ?? DEFAULT_SETTINGS.frameType,
+    sideBySideSplitRatio: clampSplitRatio(stored.sideBySideSplitRatio ?? DEFAULT_SETTINGS.sideBySideSplitRatio),
   };
 }
 
@@ -309,6 +320,7 @@ async function persistEditorSettings(settings: EditorSettings) {
   try {
     const store = await Store.load(SETTINGS_STORE_NAME);
     const storableImage = settings.selectedImageSrc ? toStorableValue(settings.selectedImageSrc) : null;
+    const storableImage2 = settings.selectedImageSrc2 ? toStorableValue(settings.selectedImageSrc2) : null;
     const storableMacbookImage = settings.macbookBackground.selectedImageSrc
       ? toStorableValue(settings.macbookBackground.selectedImageSrc)
       : null;
@@ -316,6 +328,7 @@ async function persistEditorSettings(settings: EditorSettings) {
       backgroundType: settings.backgroundType,
       customColor: settings.customColor,
       selectedImage: storableImage,
+      selectedImage2: storableImage2,
       gradientId: settings.gradientId,
       macbookUseOuterBackground: settings.macbookUseOuterBackground,
       macbookScreenshotPadding: settings.macbookScreenshotPadding,
@@ -346,6 +359,7 @@ async function persistEditorSettings(settings: EditorSettings) {
       imageScalingMode: settings.imageScalingMode,
       imageBorderSize: settings.imageBorderSize,
       frameType: settings.frameType,
+      sideBySideSplitRatio: settings.sideBySideSplitRatio,
     });
     await store.save();
   } catch (err) {
@@ -526,6 +540,12 @@ export const useEditorStore = create<EditorStore>()(
             selectedImageSrc: imageSrc,
             backgroundType: "image",
           },
+        });
+      },
+
+      handleSecondImageSelect: (imageSrc) => {
+        get().updateSettings({
+          selectedImageSrc2: imageSrc,
         });
       },
 
@@ -749,6 +769,10 @@ export const useEditorStore = create<EditorStore>()(
         get().updateSettings({ frameType });
       },
 
+      setSideBySideSplitRatio: (ratio) => {
+        get().updateSettings({ sideBySideSplitRatio: clampSplitRatio(ratio) });
+      },
+
       // ========================================
       // Annotations
       // ========================================
@@ -914,6 +938,7 @@ export const useCanRedo = () => useEditorStore((state) => state.future.length > 
 // These functions are defined once in the store and never change
 export const editorActions = {
   get initialize() { return useEditorStore.getState().initialize; },
+  get updateSettingsTransient() { return useEditorStore.getState().updateSettingsTransient; },
   get setBackgroundType() { return useEditorStore.getState().setBackgroundType; },
   get setCustomColor() { return useEditorStore.getState().setCustomColor; },
   get setSelectedImage() { return useEditorStore.getState().setSelectedImage; },
@@ -925,6 +950,7 @@ export const editorActions = {
   get setMacbookSelectedImage() { return useEditorStore.getState().setMacbookSelectedImage; },
   get setMacbookGradient() { return useEditorStore.getState().setMacbookGradient; },
   get handleMacbookImageSelect() { return useEditorStore.getState().handleMacbookImageSelect; },
+  get handleSecondImageSelect() { return useEditorStore.getState().handleSecondImageSelect; },
   get setMacbookScreenshotPadding() { return useEditorStore.getState().setMacbookScreenshotPadding; },
   get setMacbookScreenshotPaddingTransient() { return useEditorStore.getState().setMacbookScreenshotPaddingTransient; },
   get setNoiseAmount() { return useEditorStore.getState().setNoiseAmount; },

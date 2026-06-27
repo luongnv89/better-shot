@@ -19,6 +19,10 @@ interface AssetGridProps {
   backgroundType: string;
   expanded?: boolean;
   uploadedImages?: string[];
+  title?: string;
+  uploadLabel?: string;
+  uploadAriaLabel?: string;
+  matchBackgroundType?: boolean;
   onImageSelect: (imageSrc: string) => void;
   onToggle?: () => void;
   onUpload?: (file: File) => void;
@@ -29,6 +33,10 @@ export const AssetGrid = memo(function AssetGrid({
   selectedImage,
   backgroundType,
   uploadedImages,
+  title = "Wallpapers",
+  uploadLabel = "Upload",
+  uploadAriaLabel = "Upload background image",
+  matchBackgroundType = true,
   onImageSelect,
   onUpload,
 }: AssetGridProps) {
@@ -44,7 +52,7 @@ export const AssetGrid = memo(function AssetGrid({
     <div>
       {/* Section header */}
       <div className="section-header">
-        <span className="section-title">Wallpapers</span>
+        <span className="section-title">{title}</span>
         {onUpload && (
           <>
             <input
@@ -60,7 +68,7 @@ export const AssetGrid = memo(function AssetGrid({
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              aria-label="Upload background image"
+              aria-label={uploadAriaLabel}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -77,7 +85,7 @@ export const AssetGrid = memo(function AssetGrid({
               }}
             >
               <Upload className="size-3" aria-hidden="true" />
-              Upload
+              {uploadLabel}
             </button>
           </>
         )}
@@ -137,7 +145,7 @@ export const AssetGrid = memo(function AssetGrid({
         paddingBottom: 4,
       }}>
         {currentCategory?.assets.map((asset) => {
-          const isSelected = backgroundType === "image" && selectedImage === asset.src;
+          const isSelected = (!matchBackgroundType || backgroundType === "image") && selectedImage === asset.src;
           return (
             <button
               key={asset.id}
