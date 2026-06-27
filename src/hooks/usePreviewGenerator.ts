@@ -333,7 +333,7 @@ export function usePreviewGenerator({
         ctx.drawImage(tempCanvas, 0, 0);
 
         ctx.save();
-        const shouldApplyImageShadow = settingsToRender.frameType !== "side-by-side";
+        const shouldApplyImageShadow = settingsToRender.frameType !== "side-by-side" || !secondImage;
         ctx.shadowColor = shouldApplyImageShadow ? `rgba(0, 0, 0, ${settingsToRender.shadow.opacity / 100})` : "transparent";
         ctx.shadowBlur = shouldApplyImageShadow ? settingsToRender.shadow.blur : 0;
         ctx.shadowOffsetX = shouldApplyImageShadow ? settingsToRender.shadow.offsetX : 0;

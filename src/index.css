@@ -403,6 +403,10 @@ input[type="number"] {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.header-btn:focus-visible {
+  outline: 2px solid oklch(0.72 0.18 142 / 0.6);
+  outline-offset: 1px;
+}
 .header-btn-ghost {
   background: transparent;
   color: oklch(0.55 0.012 250);

@@ -337,7 +337,7 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
     ctx.drawImage(bgCanvas, 0, 0);
 
     ctx.save();
-    const shouldApplyImageShadow = frameType !== "side-by-side";
+    const shouldApplyImageShadow = frameType !== "side-by-side" || !secondImage;
     ctx.shadowColor = shouldApplyImageShadow ? `rgba(0, 0, 0, ${shadow.opacity / 100})` : "transparent";
     ctx.shadowBlur = shouldApplyImageShadow ? shadow.blur : 0;
     ctx.shadowOffsetX = shouldApplyImageShadow ? shadow.offsetX : 0;
