@@ -827,7 +827,7 @@ export function ImageEditor({
                         <div style={{ fontSize: 12, fontWeight: 700, color: 'oklch(0.84 0.01 250)' }}>
                           {imageLoaded ? 'Image 1 selected' : 'No image 1'}
                         </div>
-                        <div style={{ marginTop: 2, fontSize: 10, lineHeight: 1.35, color: 'oklch(0.56 0.01 250)' }}>
+                        <div style={{ marginTop: 2, fontSize: 10, lineHeight: 1.35, color: 'oklch(0.62 0.01 250)' }}>
                           Drop a file here, or replace it.
                         </div>
                       </div>
@@ -914,7 +914,7 @@ export function ImageEditor({
                             <div style={{ fontSize: 12, fontWeight: 700, color: 'oklch(0.84 0.01 250)' }}>
                               Image 2 selected
                             </div>
-                            <div style={{ marginTop: 2, fontSize: 10, lineHeight: 1.35, color: 'oklch(0.56 0.01 250)' }}>
+                            <div style={{ marginTop: 2, fontSize: 10, lineHeight: 1.35, color: 'oklch(0.62 0.01 250)' }}>
                               Drop a file here, or replace it below.
                             </div>
                           </div>

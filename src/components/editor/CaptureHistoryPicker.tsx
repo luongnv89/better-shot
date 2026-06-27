@@ -55,7 +55,7 @@ export const CaptureHistoryPicker = memo(function CaptureHistoryPicker({
       </div>
 
       {entries.length === 0 ? (
-        <div style={{ fontSize: 11, lineHeight: 1.4, color: "oklch(0.56 0.01 250)", padding: "8px 2px" }}>
+        <div style={{ fontSize: 11, lineHeight: 1.4, color: "oklch(0.62 0.01 250)", padding: "8px 2px" }}>
           No captures yet. Take a screenshot and it will appear here.
         </div>
       ) : (
