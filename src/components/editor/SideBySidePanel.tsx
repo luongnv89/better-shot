@@ -1,11 +1,10 @@
-import { memo, useState } from "react";
-import { RefreshCw, MoveLeft } from "lucide-react";
+import { memo } from "react";
+import { MoveLeft } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 interface SideBySidePanelProps {
   splitRatio: number;
   onSplitRatioChange: (ratio: number) => void;
-  onSwapImages?: () => void;
   leftImageLabel?: string;
   rightImageLabel?: string;
 }
@@ -13,45 +12,15 @@ interface SideBySidePanelProps {
 export const SideBySidePanel = memo(function SideBySidePanel({
   splitRatio,
   onSplitRatioChange,
-  onSwapImages,
   leftImageLabel = "Left",
   rightImageLabel = "Right",
 }: SideBySidePanelProps) {
-  const [isSwapping, setIsSwapping] = useState(false);
-
-  const handleSwap = () => {
-    if (!onSwapImages) return;
-    setIsSwapping(true);
-    onSwapImages();
-    setTimeout(() => setIsSwapping(false), 200);
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Section header */}
       <div className="section-header" style={{ paddingTop: 0 }}>
         <span className="section-title">Side-by-side</span>
       </div>
-
-      {/* Swap button */}
-      {onSwapImages && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span className="toggle-label">Swap images</span>
-          <button
-            onClick={handleSwap}
-            aria-label="Swap left and right images"
-            className="tool-btn"
-            style={{
-              opacity: isSwapping ? 0.6 : 1,
-              transition: "opacity 0.15s ease",
-              minWidth: 44,
-              minHeight: 44,
-            }}
-          >
-            <RefreshCw className={`size-[15px] ${isSwapping ? "animate-spin" : ""}`} />
-          </button>
-        </div>
-      )}
 
       {/* Split ratio slider */}
       <div>
@@ -81,7 +50,7 @@ export const SideBySidePanel = memo(function SideBySidePanel({
         </div>
       </div>
 
-      {/* Per-image position hint */}
+      {/* Split ratio hint */}
       <div style={{
         padding: "8px 10px",
         background: "oklch(0.145 0.008 250)",
@@ -97,7 +66,6 @@ export const SideBySidePanel = memo(function SideBySidePanel({
         <MoveLeft className="size-3 mt-0.5 flex-shrink-0" style={{ color: "oklch(0.42 0.012 250)" }} />
         <span>
           Adjust the split ratio to control how much space each image takes.
-          Drag the images directly on the canvas to reposition.
         </span>
       </div>
     </div>

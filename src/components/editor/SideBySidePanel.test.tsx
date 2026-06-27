@@ -8,40 +8,10 @@ describe("SideBySidePanel", () => {
       <SideBySidePanel
         splitRatio={0.5}
         onSplitRatioChange={vi.fn()}
-        onSwapImages={vi.fn()}
       />
     );
 
     expect(screen.getByText("Side-by-side")).toBeInTheDocument();
-  });
-
-  it("renders the swap button", () => {
-    render(
-      <SideBySidePanel
-        splitRatio={0.5}
-        onSplitRatioChange={vi.fn()}
-        onSwapImages={vi.fn()}
-      />
-    );
-
-    const swapButton = screen.getByLabelText("Swap left and right images");
-    expect(swapButton).toBeInTheDocument();
-  });
-
-  it("calls onSwapImages when swap button is clicked", () => {
-    const onSwapImages = vi.fn();
-    render(
-      <SideBySidePanel
-        splitRatio={0.5}
-        onSplitRatioChange={vi.fn()}
-        onSwapImages={onSwapImages}
-      />
-    );
-
-    const swapButton = screen.getByLabelText("Swap left and right images");
-    fireEvent.click(swapButton);
-
-    expect(onSwapImages).toHaveBeenCalledTimes(1);
   });
 
   it("renders the split ratio slider", () => {
@@ -49,7 +19,6 @@ describe("SideBySidePanel", () => {
       <SideBySidePanel
         splitRatio={0.5}
         onSplitRatioChange={vi.fn()}
-        onSwapImages={vi.fn()}
       />
     );
 
@@ -65,7 +34,6 @@ describe("SideBySidePanel", () => {
       <SideBySidePanel
         splitRatio={0.5}
         onSplitRatioChange={onSplitRatioChange}
-        onSwapImages={vi.fn()}
       />
     );
 
@@ -80,7 +48,6 @@ describe("SideBySidePanel", () => {
       <SideBySidePanel
         splitRatio={0.75}
         onSplitRatioChange={vi.fn()}
-        onSwapImages={vi.fn()}
       />
     );
 
@@ -92,7 +59,6 @@ describe("SideBySidePanel", () => {
       <SideBySidePanel
         splitRatio={0.5}
         onSplitRatioChange={vi.fn()}
-        onSwapImages={vi.fn()}
         leftImageLabel="Before"
         rightImageLabel="After"
       />
@@ -107,7 +73,6 @@ describe("SideBySidePanel", () => {
       <SideBySidePanel
         splitRatio={0.5}
         onSplitRatioChange={vi.fn()}
-        onSwapImages={vi.fn()}
       />
     );
 
