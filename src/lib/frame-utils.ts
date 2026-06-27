@@ -587,7 +587,7 @@ export function getSideBySideFrameDimensions(
   rightHeight: number
 ): FrameDimensions {
   const maxHeight = Math.max(leftHeight, rightHeight);
-  const totalWidth = leftWidth + rightWidth + 8; // 8px gap
+  const totalWidth = leftWidth + rightWidth;
   const totalHeight = maxHeight;
 
   return {
@@ -600,11 +600,32 @@ export function getSideBySideFrameDimensions(
   };
 }
 
+export interface SideBySideShadow {
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+  opacity: number;
+}
+
+export interface SideBySideOptions {
+  splitRatio?: number;
+  /** Corner radius applied to each photo. */
+  borderRadius?: number;
+  /** Drop shadow drawn under each photo. Omit/null to disable. */
+  shadow?: SideBySideShadow | null;
+}
+
+/** Fraction of the composition width reserved as the gap between the two photos. */
+const SIDE_BY_SIDE_GAP_RATIO = 0.04;
+
 /**
- * Draw the side-by-side frame.
+ * Draw the side-by-side composition.
  *
- * Draws a subtle container with a thin border and rounded corners,
- * then clips and draws each image into its respective half.
+ * Both photos sit on the shared canvas background. Each is letterboxed
+ * ("contain") inside its slot so the whole screenshot is visible and the
+ * shared background shows through around and between them. A gap separates
+ * the two slots, and each photo gets rounded corners plus an optional drop
+ * shadow so it reads as floating on top of the single background.
  */
 export function drawSideBySideFrame(
   ctx: CanvasRenderingContext2D,
@@ -613,84 +634,62 @@ export function drawSideBySideFrame(
   dims: FrameDimensions,
   leftImage: HTMLImageElement,
   rightImage: HTMLImageElement,
-  splitRatio: number = 0.5
+  options: SideBySideOptions = {}
 ) {
+  const { splitRatio = 0.5, borderRadius = 0, shadow = null } = options;
   const { totalWidth, totalHeight } = dims;
 
-  ctx.save();
+  const gap = Math.round(totalWidth * SIDE_BY_SIDE_GAP_RATIO);
+  const contentWidth = totalWidth - gap;
+  const leftSlotWidth = Math.round(contentWidth * splitRatio);
+  const rightSlotWidth = contentWidth - leftSlotWidth;
+  const leftX = x;
+  const rightX = x + leftSlotWidth + gap;
 
-  // Container background (subtle dark rounded rect)
-  ctx.beginPath();
-  ctx.roundRect(x, y, totalWidth, totalHeight, 12);
-  ctx.fillStyle = "#1a1a1a";
-  ctx.fill();
+  const drawContainedImage = (
+    source: HTMLImageElement,
+    slotX: number,
+    slotY: number,
+    slotWidth: number,
+    slotHeight: number
+  ) => {
+    // Letterbox the photo inside its slot (whole image visible, background shows through).
+    const fitted = getContainFitRect(
+      source.width,
+      source.height,
+      slotX,
+      slotY,
+      slotWidth,
+      slotHeight
+    );
+    // Keep the corner radius sane for small photos.
+    const radius = Math.max(0, Math.min(borderRadius, fitted.width / 2, fitted.height / 2));
 
-  // Thin border
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
+    // Shadow pass: draw a rounded rect (no clip) so the shadow isn't cut off.
+    if (shadow && shadow.opacity > 0) {
+      ctx.save();
+      ctx.shadowColor = `rgba(0, 0, 0, ${shadow.opacity / 100})`;
+      ctx.shadowBlur = shadow.blur;
+      ctx.shadowOffsetX = shadow.offsetX;
+      ctx.shadowOffsetY = shadow.offsetY;
+      ctx.beginPath();
+      ctx.roundRect(fitted.x, fitted.y, fitted.width, fitted.height, radius);
+      ctx.fillStyle = "#000000";
+      ctx.fill();
+      ctx.restore();
+    }
 
-  // Calculate split
-  const gap = 8;
-  const totalContentWidth = leftImage.width + rightImage.width;
-  const leftSlotWidth = Math.round(totalContentWidth * splitRatio);
-  const rightSlotWidth = totalContentWidth - leftSlotWidth;
+    // Image pass: clip to the rounded rect and draw the photo.
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(fitted.x, fitted.y, fitted.width, fitted.height, radius);
+    ctx.clip();
+    ctx.drawImage(source, fitted.x, fitted.y, fitted.width, fitted.height);
+    ctx.restore();
+  };
 
-  const padding = 12;
-  const leftInnerWidth = leftSlotWidth - padding * 2 - Math.round(gap / 2);
-  const rightInnerWidth = rightSlotWidth - padding * 2 - Math.round(gap / 2);
-  const maxHeight = Math.max(leftImage.height, rightImage.height);
-  const slotHeight = maxHeight - padding * 2;
-
-  const leftX = x + padding + Math.round(gap / 2);
-  const leftY = y + padding;
-  const rightX = leftX + leftInnerWidth + gap;
-  const rightY = y + padding;
-
-  // Draw left image (object-cover)
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(leftX, leftY, leftInnerWidth, slotHeight, 8);
-  ctx.clip();
-  const leftScale = Math.max(leftInnerWidth / leftImage.width, slotHeight / leftImage.height);
-  const leftDrawW = leftImage.width * leftScale;
-  const leftDrawH = leftImage.height * leftScale;
-  ctx.drawImage(
-    leftImage,
-    leftX + (leftInnerWidth - leftDrawW) / 2,
-    leftY + (slotHeight - leftDrawH) / 2,
-    leftDrawW,
-    leftDrawH
-  );
-  ctx.restore();
-
-  // Draw right image (object-cover)
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(rightX, rightY, rightInnerWidth, slotHeight, 8);
-  ctx.clip();
-  const rightScale = Math.max(rightInnerWidth / rightImage.width, slotHeight / rightImage.height);
-  const rightDrawW = rightImage.width * rightScale;
-  const rightDrawH = rightImage.height * rightScale;
-  ctx.drawImage(
-    rightImage,
-    rightX + (rightInnerWidth - rightDrawW) / 2,
-    rightY + (slotHeight - rightDrawH) / 2,
-    rightDrawW,
-    rightDrawH
-  );
-  ctx.restore();
-
-  // Vertical divider line
-  const dividerX = x + padding + leftInnerWidth + Math.round(gap / 2);
-  ctx.beginPath();
-  ctx.moveTo(dividerX, y + padding);
-  ctx.lineTo(dividerX, y + padding + slotHeight);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.restore();
+  drawContainedImage(leftImage, leftX, y, leftSlotWidth, totalHeight);
+  drawContainedImage(rightImage, rightX, y, rightSlotWidth, totalHeight);
 }
 
 // ---------------------------------------------------------------------------

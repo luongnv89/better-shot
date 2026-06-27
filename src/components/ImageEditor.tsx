@@ -16,6 +16,7 @@ import { AssetGrid } from "./editor/AssetGrid";
 import { EffectsPanel } from "./editor/EffectsPanel";
 import { FrameSelector } from "./editor/FrameSelector";
 import { SideBySidePanel } from "./editor/SideBySidePanel";
+import { CaptureHistoryPicker } from "./editor/CaptureHistoryPicker";
 import { ImageRoundnessControl } from "./editor/ImageRoundnessControl";
 import { AnnotationCanvas } from "./editor/AnnotationCanvas";
 import { PropertiesPanel } from "./editor/PropertiesPanel";
@@ -25,6 +26,7 @@ import { ExportSettingsPanel } from "./editor/ExportSettingsPanel";
 import { Annotation, ToolType } from "@/types/annotations";
 import { usePreviewGenerator } from "@/hooks/usePreviewGenerator";
 import { assetCategories } from "@/hooks/useEditorSettings";
+import { useCaptureHistoryEntries, type CaptureHistoryEntry } from "@/stores/captureHistoryStore";
 import { Store } from "@tauri-apps/plugin-store";
 import {
   useSettings,
@@ -43,6 +45,13 @@ interface ImageEditorProps {
   onCancel: () => void;
   saveDir: string;
   onSaveDirChange: (value: string) => void;
+  /**
+   * On-disk capture path to apply as Image 2 in side-by-side mode (queued from
+   * the capture-history "Compare side-by-side" action). Applied once the editor
+   * store has initialized, then cleared via onSideBySideSecondPathConsumed.
+   */
+  pendingSideBySideSecondPath?: string | null;
+  onSideBySideSecondPathConsumed?: () => void;
 }
 
 type SidebarTab = "image" | "background" | "effects" | "size" | "position" | "export" | "annotation";
@@ -73,6 +82,8 @@ export function ImageEditor({
   onCancel,
   saveDir,
   onSaveDirChange,
+  pendingSideBySideSecondPath = null,
+  onSideBySideSecondPathConsumed,
 }: ImageEditorProps) {
   const settings = useSettings();
   const annotations = useAnnotations();
@@ -97,6 +108,7 @@ export function ImageEditor({
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const sideBySideSplitRatio = useEditorStore((s) => s.settings.sideBySideSplitRatio);
   const setSideBySideSplitRatio = useEditorStore((s) => s.setSideBySideSplitRatio);
+  const storeInitialized = useEditorStore((s) => s._isInitialized);
 
   // If annotation selected, auto-show annotation tab info
   const [, setShowAnnotationPanel] = useState(false);
@@ -206,7 +218,69 @@ export function ImageEditor({
     }
   }, [saveDir, onSaveDirChange]);
 
+  const firstImageFileInputRef = useRef<HTMLInputElement>(null);
+  const [isFirstImageDragActive, setIsFirstImageDragActive] = useState(false);
+
+  // Load an arbitrary image source (data URL or asset:// URL) into the editor as
+  // Image 1. Image 1 lives in local state, so this is safe regardless of the
+  // store reset that fires on imagePath change.
+  const applyFirstImage = useCallback((src: string, successMessage: string) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setScreenshotImage(img);
+      setImageLoaded(true);
+      setLoadError(null);
+      const avgDimension = (img.width + img.height) / 2;
+      const defaultPadding = Math.min(Math.round(avgDimension * 0.05), 200);
+      editorActions.setPaddingTransient(defaultPadding);
+      toast.success(successMessage);
+    };
+    img.onerror = () => toast.error("Failed to load image");
+    img.src = src;
+  }, []);
+
+  const handleFirstImageUpload = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      applyFirstImage(reader.result as string, "Image 1 replaced");
+    };
+    reader.onerror = () => toast.error("Failed to read image file");
+    reader.readAsDataURL(file);
+  }, [applyFirstImage]);
+
+  const openFirstImagePicker = useCallback(() => {
+    firstImageFileInputRef.current?.click();
+  }, []);
+
+  const handleFirstImageFileInput = useCallback((file: File | undefined) => {
+    if (file) handleFirstImageUpload(file);
+  }, [handleFirstImageUpload]);
+
+  const handleFirstImageDrop = useCallback((event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setIsFirstImageDragActive(false);
+    handleFirstImageFileInput(event.dataTransfer.files?.[0]);
+  }, [handleFirstImageFileInput]);
+
+  const handleFirstImageDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setIsFirstImageDragActive(true);
+  }, []);
+
+  const handleFirstImageDragLeave = useCallback((event: React.DragEvent<HTMLElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setIsFirstImageDragActive(false);
+    }
+  }, []);
+
   const secondImageFileInputRef = useRef<HTMLInputElement>(null);
+  const [isSecondImageDragActive, setIsSecondImageDragActive] = useState(false);
 
   const handleSecondImageUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -222,6 +296,114 @@ export function ImageEditor({
     reader.onerror = () => toast.error("Failed to read image file");
     reader.readAsDataURL(file);
   }, []);
+
+  const openSecondImagePicker = useCallback(() => {
+    secondImageFileInputRef.current?.click();
+  }, []);
+
+  const handleSecondImageFileInput = useCallback((file: File | undefined) => {
+    if (file) handleSecondImageUpload(file);
+  }, [handleSecondImageUpload]);
+
+  const handleSecondImageDrop = useCallback((event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setIsSecondImageDragActive(false);
+    handleSecondImageFileInput(event.dataTransfer.files?.[0]);
+  }, [handleSecondImageFileInput]);
+
+  const handleSecondImageDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setIsSecondImageDragActive(true);
+  }, []);
+
+  const handleSecondImageDragLeave = useCallback((event: React.DragEvent<HTMLElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setIsSecondImageDragActive(false);
+    }
+  }, []);
+
+  // ── Pick from capture history (side-by-side) ──
+  // Which slot the inline history picker is targeting (null = closed).
+  const captureHistoryEntries = useCaptureHistoryEntries();
+  const [historyPickerTarget, setHistoryPickerTarget] = useState<"first" | "second" | null>(null);
+
+  // Read a full-resolution on-disk capture into a data URL. We deliberately use
+  // the full-res savedPath (not a downscaled thumbnail) and convert to a data URL
+  // because Image 2 (selectedImageSrc2) is persisted, and only data URLs
+  // round-trip through the asset registry (asset:// URLs do not).
+  //
+  // We load via <img src=convertFileSrc(...)> and draw to a canvas rather than
+  // fetch(). The CSP allows the asset protocol in img-src but NOT in connect-src,
+  // so fetch() of an asset URL is blocked — the img+canvas path is what the
+  // capture-open and save/copy flows already use successfully.
+  const pathToDataUrl = useCallback((savedPath: string): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to get canvas context"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        try {
+          resolve(canvas.toDataURL("image/png"));
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error("Failed to encode capture"));
+        }
+      };
+      img.onerror = () => reject(new Error("Failed to load capture"));
+      img.src = convertFileSrc(savedPath);
+    });
+  }, []);
+
+  const handlePickFromHistory = useCallback(async (entry: CaptureHistoryEntry) => {
+    const target = historyPickerTarget;
+    setHistoryPickerTarget(null);
+    if (!target) return;
+    try {
+      const dataUrl = await pathToDataUrl(entry.savedPath);
+      if (target === "first") {
+        applyFirstImage(dataUrl, "Image 1 set from history");
+      } else {
+        editorActions.handleSecondImageSelect(dataUrl);
+        toast.success("Image 2 set from history");
+      }
+    } catch (err) {
+      console.error("Failed to load capture from history:", err);
+      toast.error("Failed to load capture");
+    }
+  }, [historyPickerTarget, pathToDataUrl, applyFirstImage]);
+
+  // Apply a capture queued from the gallery's "Compare side-by-side" action as
+  // Image 2. Gated on store initialization because opening the editor fires
+  // reset()+initialize() on imagePath change — applying before init completes
+  // would be wiped by the rehydrate. We also switch the frame to side-by-side.
+  useEffect(() => {
+    if (!storeInitialized || !pendingSideBySideSecondPath) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const dataUrl = await pathToDataUrl(pendingSideBySideSecondPath);
+        if (cancelled) return;
+        useEditorStore.getState().updateSettings({
+          frameType: "side-by-side",
+          selectedImageSrc2: dataUrl,
+        });
+      } catch (err) {
+        console.error("Failed to load side-by-side capture:", err);
+        toast.error("Failed to load second image");
+      } finally {
+        if (!cancelled) onSideBySideSecondPathConsumed?.();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [storeInitialized, pendingSideBySideSecondPath, pathToDataUrl, onSideBySideSecondPathConsumed]);
 
   const handleBackgroundUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -590,79 +772,256 @@ export function ImageEditor({
                     <SideBySidePanel
                       splitRatio={sideBySideSplitRatio}
                       onSplitRatioChange={setSideBySideSplitRatio}
-                      onSwapImages={() => {
-                        const s = useEditorStore.getState().settings;
-                        useEditorStore.getState().updateSettings({
-                          selectedImageSrc: s.selectedImageSrc2,
-                          selectedImageSrc2: s.selectedImageSrc,
-                        });
-                      }}
                       leftImageLabel="Image 1"
                       rightImageLabel="Image 2"
                     />
                     <hr className="panel-divider" />
-                    <div className="section-header" style={{ paddingTop: 0 }}>
-                      <span className="section-title">Second Image</span>
+                    <input
+                      ref={firstImageFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        handleFirstImageFileInput(e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="section-header" style={{ paddingTop: 0, alignItems: 'flex-start' }}>
+                      <div>
+                        <span className="section-title">First Image</span>
+                        <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.4, color: 'oklch(0.62 0.01 250)' }}>
+                          Replace image 1 on the left side.
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      onDrop={handleFirstImageDrop}
+                      onDragEnter={handleFirstImageDragOver}
+                      onDragOver={handleFirstImageDragOver}
+                      onDragLeave={handleFirstImageDragLeave}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: 10,
+                        border: `1.5px dashed ${isFirstImageDragActive ? 'oklch(0.72 0.18 142)' : 'oklch(0.36 0.01 250)'}`,
+                        borderRadius: 8,
+                        background: isFirstImageDragActive ? 'oklch(0.72 0.18 142 / 0.10)' : 'oklch(0.145 0.008 250)',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 36,
+                        height: 36,
+                        borderRadius: 6,
+                        border: '1px solid oklch(0.28 0.009 250)',
+                        background: 'oklch(0.19 0.008 250)',
+                        color: 'oklch(0.72 0.18 142)',
+                        flexShrink: 0,
+                      }}>
+                        <Upload className="size-4" aria-hidden="true" />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'oklch(0.84 0.01 250)' }}>
+                          {imageLoaded ? 'Image 1 selected' : 'No image 1'}
+                        </div>
+                        <div style={{ marginTop: 2, fontSize: 10, lineHeight: 1.35, color: 'oklch(0.56 0.01 250)' }}>
+                          Drop a file here, or replace it.
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={openFirstImagePicker}
+                          aria-label="Upload or replace image 1"
+                          className="header-btn header-btn-secondary"
+                          style={{ padding: '6px 8px', fontSize: 11 }}
+                        >
+                          Replace
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryPickerTarget((t) => (t === "first" ? null : "first"))}
+                          aria-label="Pick image 1 from capture history"
+                          className="header-btn header-btn-ghost"
+                          style={{ padding: '6px 8px', fontSize: 11 }}
+                        >
+                          From history
+                        </button>
+                      </div>
+                    </div>
+                    {historyPickerTarget === "first" && (
+                      <CaptureHistoryPicker
+                        entries={captureHistoryEntries}
+                        slotLabel="Image 1"
+                        onPick={handlePickFromHistory}
+                        onClose={() => setHistoryPickerTarget(null)}
+                      />
+                    )}
+                    <hr className="panel-divider" />
+                    <input
+                      ref={secondImageFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        handleSecondImageFileInput(e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="section-header" style={{ paddingTop: 0, alignItems: 'flex-start' }}>
+                      <div>
+                        <span className="section-title">Second Image</span>
+                        <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.4, color: 'oklch(0.62 0.01 250)' }}>
+                          Upload image 2 for the right side.
+                        </div>
+                      </div>
                     </div>
                     {settings.selectedImageSrc2 ? (
-                      <AssetGrid
-                        categories={assetCategories}
-                        selectedImage={settings.selectedImageSrc2}
-                        backgroundType={settings.backgroundType}
-                        expanded={true}
-                        uploadedImages={uploadedBackgroundImages}
-                        onImageSelect={actions.handleSecondImageSelect}
-                        onToggle={() => {}}
-                        onUpload={handleSecondImageUpload}
-                      />
-                    ) : (
                       <>
-                        <input
-                          ref={secondImageFileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleSecondImageUpload(file);
-                            e.target.value = "";
-                          }}
-                          style={{ display: 'none' }}
-                        />
-                        <button
-                          onClick={() => secondImageFileInputRef.current?.click()}
-                          aria-label="Add second image for side-by-side comparison"
+                        <div
+                          onDrop={handleSecondImageDrop}
+                          onDragEnter={handleSecondImageDragOver}
+                          onDragOver={handleSecondImageDragOver}
+                          onDragLeave={handleSecondImageDragLeave}
                           style={{
                             display: 'flex',
-                            flexDirection: 'column',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 6,
-                            padding: '16px 12px',
-                            border: '2px dashed oklch(0.35 0.009 250)',
+                            gap: 10,
+                            padding: 10,
+                            border: `1.5px dashed ${isSecondImageDragActive ? 'oklch(0.72 0.18 142)' : 'oklch(0.36 0.01 250)'}`,
                             borderRadius: 8,
-                            background: 'oklch(0.135 0.008 250)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                            color: 'oklch(0.65 0.01 250)',
-                            minWidth: 44,
-                            minHeight: 44,
-                          }}
-                          onMouseEnter={(e) => {
-                            const el = e.currentTarget as HTMLButtonElement;
-                            el.style.borderColor = 'oklch(0.55 0.01 250)';
-                            el.style.color = 'oklch(0.78 0.01 250)';
-                          }}
-                          onMouseLeave={(e) => {
-                            const el = e.currentTarget as HTMLButtonElement;
-                            el.style.borderColor = 'oklch(0.35 0.009 250)';
-                            el.style.color = 'oklch(0.65 0.01 250)';
+                            background: isSecondImageDragActive ? 'oklch(0.72 0.18 142 / 0.10)' : 'oklch(0.145 0.008 250)',
                           }}
                         >
-                          <Upload className="size-5" aria-hidden="true" />
-                          <span style={{ fontSize: 12, fontWeight: 500 }}>Add second image</span>
-                          <span style={{ fontSize: 10, color: 'oklch(0.50 0.009 250)' }}>or drag and drop</span>
-                        </button>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 36,
+                            height: 36,
+                            borderRadius: 6,
+                            border: '1px solid oklch(0.28 0.009 250)',
+                            background: 'oklch(0.19 0.008 250)',
+                            color: 'oklch(0.72 0.18 142)',
+                            flexShrink: 0,
+                          }}>
+                            <Upload className="size-4" aria-hidden="true" />
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'oklch(0.84 0.01 250)' }}>
+                              Image 2 selected
+                            </div>
+                            <div style={{ marginTop: 2, fontSize: 10, lineHeight: 1.35, color: 'oklch(0.56 0.01 250)' }}>
+                              Drop a file here, or replace it below.
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              onClick={openSecondImagePicker}
+                              aria-label="Upload or replace image 2"
+                              className="header-btn header-btn-secondary"
+                              style={{ padding: '6px 8px', fontSize: 11 }}
+                            >
+                              Upload
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHistoryPickerTarget((t) => (t === "second" ? null : "second"))}
+                              aria-label="Pick image 2 from capture history"
+                              className="header-btn header-btn-ghost"
+                              style={{ padding: '6px 8px', fontSize: 11 }}
+                            >
+                              From history
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => useEditorStore.getState().updateSettings({ selectedImageSrc2: null })}
+                              aria-label="Remove image 2"
+                              className="header-btn header-btn-ghost"
+                              style={{ padding: '6px 8px', fontSize: 11 }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{
+                          padding: '8px 10px',
+                          borderRadius: 6,
+                          background: 'oklch(0.145 0.008 250)',
+                          border: '1px solid oklch(0.22 0.009 250)',
+                          fontSize: 11,
+                          lineHeight: 1.45,
+                          color: 'oklch(0.66 0.01 250)',
+                        }}>
+                          The Background tab controls the only shared background. Remove Image 2 if you want only the main photo on that background.
+                        </div>
                       </>
+                    ) : (
+                      <button
+                        onClick={openSecondImagePicker}
+                        onDrop={handleSecondImageDrop}
+                        onDragEnter={handleSecondImageDragOver}
+                        onDragOver={handleSecondImageDragOver}
+                        onDragLeave={handleSecondImageDragLeave}
+                        aria-label="Upload image 2 for side-by-side comparison"
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          padding: '20px 16px',
+                          border: `2px dashed ${isSecondImageDragActive ? 'oklch(0.72 0.18 142)' : 'oklch(0.58 0.10 142)'}`,
+                          borderRadius: 8,
+                          background: isSecondImageDragActive ? 'oklch(0.72 0.18 142 / 0.12)' : 'oklch(0.18 0.009 250)',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s ease, border-color 0.15s ease',
+                          color: 'oklch(0.86 0.01 250)',
+                          minWidth: 44,
+                          minHeight: 112,
+                          boxShadow: '0 0 0 1px oklch(0.72 0.18 142 / 0.18)',
+                        }}
+                      >
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 42,
+                          height: 42,
+                          borderRadius: 8,
+                          background: 'oklch(0.72 0.18 142 / 0.14)',
+                          color: 'oklch(0.72 0.18 142)',
+                        }}>
+                          <Upload className="size-5" aria-hidden="true" />
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>Upload Image 2</span>
+                        <span style={{ fontSize: 11, lineHeight: 1.35, color: 'oklch(0.66 0.01 250)' }}>
+                          Click to browse, or drop an image here.
+                        </span>
+                      </button>
+                    )}
+                    {settings.selectedImageSrc2 === null && (
+                      <button
+                        type="button"
+                        onClick={() => setHistoryPickerTarget((t) => (t === "second" ? null : "second"))}
+                        aria-label="Pick image 2 from capture history"
+                        className="header-btn header-btn-ghost"
+                        style={{ padding: '6px 8px', fontSize: 11, alignSelf: 'flex-start' }}
+                      >
+                        From history
+                      </button>
+                    )}
+                    {historyPickerTarget === "second" && (
+                      <CaptureHistoryPicker
+                        entries={captureHistoryEntries}
+                        slotLabel="Image 2"
+                        onPick={handlePickFromHistory}
+                        onClose={() => setHistoryPickerTarget(null)}
+                      />
                     )}
                   </>
                 )}

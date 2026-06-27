@@ -723,14 +723,14 @@ describe("editorStore - side-by-side second image", () => {
       expect(state.settings.selectedImageSrc2).toBe("data:image/png;base64,test2");
     });
 
-    it("should set background type to image", () => {
+    it("should not change the shared background type", () => {
       act(() => {
         editorActions.setBackgroundType("white");
         editorActions.handleSecondImageSelect("data:image/png;base64,test2");
       });
 
       const state = useEditorStore.getState();
-      expect(state.settings.backgroundType).toBe("image");
+      expect(state.settings.backgroundType).toBe("white");
     });
 
     it("should push to history", () => {

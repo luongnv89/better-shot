@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { ArrowLeft, Check, History, Layers } from "lucide-react";
+import { ArrowLeft, Check, Columns2, History, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +22,13 @@ interface CaptureHistoryGalleryProps {
    * destination wired up.
    */
   onSendToBatch?: (entries: CaptureHistoryEntry[]) => void;
+  /**
+   * Open the two selected captures in the editor's side-by-side mode. Only
+   * called when exactly two captures are selected; the entries are passed in
+   * gallery order so the first becomes Image 1 (left) and the second Image 2
+   * (right). Optional so the gallery still renders standalone in tests.
+   */
+  onCompareSideBySide?: (entries: CaptureHistoryEntry[]) => void;
 }
 
 /** Fixed box the thumbnails live in, so the grid stays aligned regardless of aspect. */
@@ -39,7 +46,7 @@ function basename(path: string): string {
  * selection can be sent straight into Batch Resize. Selection is purely local UI
  * state — it is not persisted and resets when the gallery unmounts.
  */
-export function CaptureHistoryGallery({ onBack, onOpenCapture, onSendToBatch }: CaptureHistoryGalleryProps) {
+export function CaptureHistoryGallery({ onBack, onOpenCapture, onSendToBatch, onCompareSideBySide }: CaptureHistoryGalleryProps) {
   const entries = useCaptureHistoryEntries();
   // Selected capture ids. A Set keeps toggling and membership checks O(1).
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -71,11 +78,18 @@ export function CaptureHistoryGallery({ onBack, onOpenCapture, onSendToBatch }: 
   const selectedCount = selectedEntries.length;
   const hasSelection = selectedCount > 0;
   const allSelected = entries.length > 0 && selectedCount === entries.length;
+  // Side-by-side compares exactly two captures (Image 1 + Image 2).
+  const canCompare = selectedCount === 2;
 
   const handleSend = useCallback(() => {
     if (selectedCount === 0) return;
     onSendToBatch?.(selectedEntries);
   }, [selectedCount, selectedEntries, onSendToBatch]);
+
+  const handleCompare = useCallback(() => {
+    if (selectedEntries.length !== 2) return;
+    onCompareSideBySide?.(selectedEntries);
+  }, [selectedEntries, onCompareSideBySide]);
 
   return (
     <main className="min-h-dvh bg-background text-foreground p-8">
@@ -125,6 +139,18 @@ export function CaptureHistoryGallery({ onBack, onOpenCapture, onSendToBatch }: 
               >
                 Clear
               </Button>
+              {onCompareSideBySide && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCompare}
+                  disabled={!canCompare}
+                  title={canCompare ? "Top-left selected = Image 1 (left); the other = Image 2 (right)" : "Select exactly 2 captures"}
+                >
+                  <Columns2 className="size-4" aria-hidden="true" />
+                  Compare side-by-side
+                </Button>
+              )}
               <Button
                 variant="cta"
                 size="sm"

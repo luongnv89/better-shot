@@ -231,8 +231,10 @@ export function usePreviewGenerator({
     const currentRenderId = ++renderIdRef.current;
     const canvas = canvasRef.current;
 
-    // When a frame is active, compute frame dimensions for canvas sizing
-    let frameDims = settingsToRender.frameType && settingsToRender.frameType !== "none"
+    // When a frame is active, compute frame dimensions for canvas sizing.
+    // Side-by-side only behaves like a frame once a second foreground image exists;
+    // otherwise the main photo renders normally over the shared background.
+    let frameDims = settingsToRender.frameType && settingsToRender.frameType !== "none" && settingsToRender.frameType !== "side-by-side"
       ? getFrameDimensions(settingsToRender.frameType, screenshotImage.width, screenshotImage.height)
       : null;
 
@@ -255,24 +257,20 @@ export function usePreviewGenerator({
         macbookBgImage = macbookBgSrc === bgSrc ? bgImage : await loadImage(macbookBgSrc);
       }
 
-      // Load second image for side-by-side mode
+      // Load second foreground image for side-by-side mode.
+      // This is independent from the shared canvas background.
       let secondImage: HTMLImageElement | null = null;
-      if (settingsToRender.frameType === "side-by-side" && settingsToRender.selectedImageSrc2) {
-        const secondSrc = getBackgroundImageSrc({
-          backgroundType: settingsToRender.backgroundType,
-          customColor: settingsToRender.customColor,
-          selectedImageSrc: settingsToRender.selectedImageSrc2,
-          gradientSrc: settingsToRender.gradientSrc,
-          gradientColors: settingsToRender.gradientColors,
-        });
-        if (secondSrc) {
-          secondImage = secondSrc === bgSrc ? bgImage : await loadImage(secondSrc);
-        }
+      if (
+        settingsToRender.frameType === "side-by-side" &&
+        settingsToRender.selectedImageSrc2 &&
+        settingsToRender.selectedImageSrc2 !== bgSrc
+      ) {
+        secondImage = await loadImage(settingsToRender.selectedImageSrc2);
       }
 
       // Override frameDims for side-by-side using actual second image dimensions
       if (settingsToRender.frameType === "side-by-side" && secondImage) {
-        const sbGap = 8;
+        const sbGap = 0;
         const sbTotalWidth = screenshotImage.width + secondImage.width + sbGap;
         const sbTotalHeight = Math.max(screenshotImage.height, secondImage.height);
         frameDims = {
@@ -335,10 +333,11 @@ export function usePreviewGenerator({
         ctx.drawImage(tempCanvas, 0, 0);
 
         ctx.save();
-        ctx.shadowColor = `rgba(0, 0, 0, ${settingsToRender.shadow.opacity / 100})`;
-        ctx.shadowBlur = settingsToRender.shadow.blur;
-        ctx.shadowOffsetX = settingsToRender.shadow.offsetX;
-        ctx.shadowOffsetY = settingsToRender.shadow.offsetY;
+        const shouldApplyImageShadow = settingsToRender.frameType !== "side-by-side";
+        ctx.shadowColor = shouldApplyImageShadow ? `rgba(0, 0, 0, ${settingsToRender.shadow.opacity / 100})` : "transparent";
+        ctx.shadowBlur = shouldApplyImageShadow ? settingsToRender.shadow.blur : 0;
+        ctx.shadowOffsetX = shouldApplyImageShadow ? settingsToRender.shadow.offsetX : 0;
+        ctx.shadowOffsetY = shouldApplyImageShadow ? settingsToRender.shadow.offsetY : 0;
 
         if (frameDims) {
           // Frame mode: draw the device frame centered on the background
@@ -364,7 +363,9 @@ export function usePreviewGenerator({
             applyNoise(macbookDisplayCanvas, settingsToRender.noiseAmount);
           }
           if (settingsToRender.frameType === "side-by-side" && secondImage) {
-            // Side-by-side mode: draw both images within the frame
+            // Side-by-side mode: draw both photos on the shared background.
+            // Shadow is set inside drawSideBySideFrame (the ctx-level shadow is
+            // disabled above for this mode so the whole composite isn't shadowed).
             drawSideBySideFrame(
               ctx,
               frameX,
@@ -372,7 +373,11 @@ export function usePreviewGenerator({
               frameDims,
               screenshotImage,
               secondImage,
-              splitRatio
+              {
+                splitRatio,
+                borderRadius: settingsToRender.borderRadius,
+                shadow: settingsToRender.shadow,
+              }
             );
           } else {
             drawFrame(
@@ -540,19 +545,15 @@ export function usePreviewGenerator({
           macbookBgImage = macbookBgSrc === bgSrc ? bgImage : await loadImage(macbookBgSrc);
         }
 
-        // Load second image for side-by-side mode
+        // Load second foreground image for side-by-side mode.
+        // This is independent from the shared canvas background.
         let secondImage: HTMLImageElement | null = null;
-        if (settings.frameType === "side-by-side" && settings.selectedImageSrc2) {
-          const secondSrc = getBackgroundImageSrc({
-            backgroundType: settings.backgroundType,
-            customColor: settings.customColor,
-            selectedImageSrc: settings.selectedImageSrc2,
-            gradientSrc: settings.gradientSrc,
-            gradientColors: settings.gradientColors,
-          });
-          if (secondSrc) {
-            secondImage = secondSrc === bgSrc ? bgImage : await loadImage(secondSrc);
-          }
+        if (
+          settings.frameType === "side-by-side" &&
+          settings.selectedImageSrc2 &&
+          settings.selectedImageSrc2 !== bgSrc
+        ) {
+          secondImage = await loadImage(settings.selectedImageSrc2);
         }
 
         const canvas = createHighQualityCanvas({

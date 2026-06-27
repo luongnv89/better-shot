@@ -545,7 +545,6 @@ export const useEditorStore = create<EditorStore>()(
       handleSecondImageSelect: (imageSrc) => {
         get().updateSettings({
           selectedImageSrc2: imageSrc,
-          backgroundType: "image",
         });
       },
 

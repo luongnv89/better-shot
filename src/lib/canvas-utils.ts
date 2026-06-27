@@ -205,8 +205,10 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
     sideBySideSplitRatio = 0.5,
   } = options;
 
-  // When a frame is active, compute frame dimensions first so we know the total size
-  let frameDims = frameType !== "none"
+  // When a frame is active, compute frame dimensions first so we know the total size.
+  // Side-by-side only behaves like a frame once a second foreground image exists;
+  // otherwise the main photo renders normally over the shared background.
+  let frameDims = frameType !== "none" && frameType !== "side-by-side"
     ? getFrameDimensions(frameType, image.width, image.height)
     : null;
 
@@ -214,11 +216,11 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
   let sideBySideDims: FrameDimensions | null = null;
   if (frameType === "side-by-side" && secondImage) {
     sideBySideDims = {
-      totalWidth: image.width + secondImage.width + 8,
+      totalWidth: image.width + secondImage.width,
       totalHeight: Math.max(image.height, secondImage.height),
       screenX: 0,
       screenY: 0,
-      screenWidth: image.width + secondImage.width + 8,
+      screenWidth: image.width + secondImage.width,
       screenHeight: Math.max(image.height, secondImage.height),
     };
     // Override frameDims so centering uses actual side-by-side dimensions
@@ -335,10 +337,11 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
     ctx.drawImage(bgCanvas, 0, 0);
 
     ctx.save();
-    ctx.shadowColor = `rgba(0, 0, 0, ${shadow.opacity / 100})`;
-    ctx.shadowBlur = shadow.blur;
-    ctx.shadowOffsetX = shadow.offsetX;
-    ctx.shadowOffsetY = shadow.offsetY;
+    const shouldApplyImageShadow = frameType !== "side-by-side";
+    ctx.shadowColor = shouldApplyImageShadow ? `rgba(0, 0, 0, ${shadow.opacity / 100})` : "transparent";
+    ctx.shadowBlur = shouldApplyImageShadow ? shadow.blur : 0;
+    ctx.shadowOffsetX = shouldApplyImageShadow ? shadow.offsetX : 0;
+    ctx.shadowOffsetY = shouldApplyImageShadow ? shadow.offsetY : 0;
 
     if (frameDims) {
       // Frame mode: draw the device frame (shadow applies to the whole frame composite)
@@ -374,7 +377,9 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
       }
 
       if (frameType === "side-by-side" && secondImage) {
-        // Side-by-side mode: draw both images within the frame
+        // Side-by-side mode: draw both photos on the shared background.
+        // Shadow is set inside drawSideBySideFrame (the ctx-level shadow is
+        // disabled above for this mode so the whole composite isn't shadowed).
         drawSideBySideFrame(
           ctx,
           frameX,
@@ -382,7 +387,11 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
           sideBySideDims!,
           image,
           secondImage,
-          sideBySideSplitRatio
+          {
+            splitRatio: sideBySideSplitRatio,
+            borderRadius,
+            shadow,
+          }
         );
       } else {
         drawFrame(ctx, frameType, frameX, frameY, frameDims!, image, macbookDisplayCanvas, macbookScreenshotPadding);

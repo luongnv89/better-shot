@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 interface SideBySidePanelProps {
   splitRatio: number;
   onSplitRatioChange: (ratio: number) => void;
-  onSwapImages: () => void;
+  onSwapImages?: () => void;
   leftImageLabel?: string;
   rightImageLabel?: string;
 }
@@ -20,6 +20,7 @@ export const SideBySidePanel = memo(function SideBySidePanel({
   const [isSwapping, setIsSwapping] = useState(false);
 
   const handleSwap = () => {
+    if (!onSwapImages) return;
     setIsSwapping(true);
     onSwapImages();
     setTimeout(() => setIsSwapping(false), 200);
@@ -33,22 +34,24 @@ export const SideBySidePanel = memo(function SideBySidePanel({
       </div>
 
       {/* Swap button */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <span className="toggle-label">Swap images</span>
-        <button
-          onClick={handleSwap}
-          aria-label="Swap left and right images"
-          className="tool-btn"
-          style={{
-            opacity: isSwapping ? 0.6 : 1,
-            transition: "opacity 0.15s ease",
-            minWidth: 44,
-            minHeight: 44,
-          }}
-        >
-          <RefreshCw className={`size-[15px] ${isSwapping ? "animate-spin" : ""}`} />
-        </button>
-      </div>
+      {onSwapImages && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span className="toggle-label">Swap images</span>
+          <button
+            onClick={handleSwap}
+            aria-label="Swap left and right images"
+            className="tool-btn"
+            style={{
+              opacity: isSwapping ? 0.6 : 1,
+              transition: "opacity 0.15s ease",
+              minWidth: 44,
+              minHeight: 44,
+            }}
+          >
+            <RefreshCw className={`size-[15px] ${isSwapping ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+      )}
 
       {/* Split ratio slider */}
       <div>
