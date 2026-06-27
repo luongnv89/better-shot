@@ -1,10 +1,15 @@
 import { memo } from "react";
-import { MoveLeft } from "lucide-react";
+import { MoveLeft, RefreshCw } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 interface SideBySidePanelProps {
   splitRatio: number;
   onSplitRatioChange: (ratio: number) => void;
+  /**
+   * Swap Image 1 and Image 2. Only provide when both images are present —
+   * the swap control is hidden when this is omitted (see ImageEditor).
+   */
+  onSwapImages?: () => void;
   leftImageLabel?: string;
   rightImageLabel?: string;
 }
@@ -12,6 +17,7 @@ interface SideBySidePanelProps {
 export const SideBySidePanel = memo(function SideBySidePanel({
   splitRatio,
   onSplitRatioChange,
+  onSwapImages,
   leftImageLabel = "Left",
   rightImageLabel = "Right",
 }: SideBySidePanelProps) {
@@ -21,6 +27,21 @@ export const SideBySidePanel = memo(function SideBySidePanel({
       <div className="section-header" style={{ paddingTop: 0 }}>
         <span className="section-title">Side-by-side</span>
       </div>
+
+      {/* Swap button — only shown when both images are present */}
+      {onSwapImages && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span className="toggle-label">Swap images</span>
+          <button
+            onClick={onSwapImages}
+            aria-label="Swap left and right images"
+            className="tool-btn"
+            style={{ minWidth: 44, minHeight: 44 }}
+          >
+            <RefreshCw className="size-[15px]" />
+          </button>
+        </div>
+      )}
 
       {/* Split ratio slider */}
       <div>

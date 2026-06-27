@@ -323,6 +323,45 @@ export function ImageEditor({
     }
   }, []);
 
+  // Swap Image 1 and Image 2 in side-by-side mode.
+  //
+  // The two slots have different lifecycles: Image 1 is component-local
+  // (screenshotImage) and never persisted, while Image 2 (selectedImageSrc2)
+  // is store-backed. To exchange them we (1) snapshot the old Image 2 src,
+  // (2) render the *already-loaded* Image 1 element to a canvas to capture its
+  // pixels as a data URL — we draw the element rather than reloading its .src
+  // because that src may be an asset:// URL, which the CSP blocks for fetch and
+  // which does not round-trip through the asset registry as a data URL,
+  // (3) load old Image 2 into Image 1 via applyFirstImage, and (4) write old
+  // Image 1 into Image 2 with updateSettingsTransient.
+  //
+  // updateSettingsTransient (not handleSecondImageSelect) is deliberate: it
+  // updates selectedImageSrc2 in memory without pushing a history snapshot or
+  // persisting. This keeps the swap session-scoped — matching how "replace
+  // Image 1" already behaves — and avoids corrupting undo (which cannot restore
+  // the component-local Image 1) or leaving the two slots inconsistent after a
+  // reload that reverts Image 1 to imagePath.
+  const handleSwapImages = useCallback(() => {
+    if (!screenshotImage || !settings.selectedImageSrc2) return;
+    const oldImage2 = settings.selectedImageSrc2;
+    let oldImage1: string;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = screenshotImage.naturalWidth;
+      canvas.height = screenshotImage.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to get canvas context");
+      ctx.drawImage(screenshotImage, 0, 0);
+      oldImage1 = canvas.toDataURL("image/png");
+    } catch (err) {
+      console.error("Failed to capture Image 1 for swap:", err);
+      toast.error("Failed to swap images");
+      return;
+    }
+    applyFirstImage(oldImage2, "Images swapped");
+    editorActions.updateSettingsTransient({ selectedImageSrc2: oldImage1 });
+  }, [screenshotImage, settings.selectedImageSrc2, applyFirstImage]);
+
   // ── Pick from capture history (side-by-side) ──
   // Which slot the inline history picker is targeting (null = closed).
   const captureHistoryEntries = useCaptureHistoryEntries();
@@ -772,6 +811,11 @@ export function ImageEditor({
                     <SideBySidePanel
                       splitRatio={sideBySideSplitRatio}
                       onSplitRatioChange={setSideBySideSplitRatio}
+                      onSwapImages={
+                        screenshotImage && settings.selectedImageSrc2
+                          ? handleSwapImages
+                          : undefined
+                      }
                       leftImageLabel="Image 1"
                       rightImageLabel="Image 2"
                     />

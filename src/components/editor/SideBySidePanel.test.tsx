@@ -14,6 +14,48 @@ describe("SideBySidePanel", () => {
     expect(screen.getByText("Side-by-side")).toBeInTheDocument();
   });
 
+  it("renders the swap button when onSwapImages is provided", () => {
+    render(
+      <SideBySidePanel
+        splitRatio={0.5}
+        onSplitRatioChange={vi.fn()}
+        onSwapImages={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByLabelText("Swap left and right images")
+    ).toBeInTheDocument();
+  });
+
+  it("hides the swap button when onSwapImages is omitted", () => {
+    render(
+      <SideBySidePanel
+        splitRatio={0.5}
+        onSplitRatioChange={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByLabelText("Swap left and right images")
+    ).not.toBeInTheDocument();
+  });
+
+  it("calls onSwapImages when the swap button is clicked", () => {
+    const onSwapImages = vi.fn();
+    render(
+      <SideBySidePanel
+        splitRatio={0.5}
+        onSplitRatioChange={vi.fn()}
+        onSwapImages={onSwapImages}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("Swap left and right images"));
+
+    expect(onSwapImages).toHaveBeenCalledTimes(1);
+  });
+
   it("renders the split ratio slider", () => {
     render(
       <SideBySidePanel

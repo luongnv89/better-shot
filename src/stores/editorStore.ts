@@ -937,6 +937,7 @@ export const useCanRedo = () => useEditorStore((state) => state.future.length > 
 // These functions are defined once in the store and never change
 export const editorActions = {
   get initialize() { return useEditorStore.getState().initialize; },
+  get updateSettingsTransient() { return useEditorStore.getState().updateSettingsTransient; },
   get setBackgroundType() { return useEditorStore.getState().setBackgroundType; },
   get setCustomColor() { return useEditorStore.getState().setCustomColor; },
   get setSelectedImage() { return useEditorStore.getState().setSelectedImage; },
