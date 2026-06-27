@@ -70,7 +70,7 @@ describe("SideBySidePanel", () => {
     );
 
     const slider = screen.getByRole("slider");
-    fireEvent.input(slider, { target: { value: "0.7" } });
+    fireEvent.change(slider, { target: { value: "0.7" } });
 
     expect(onSplitRatioChange).toHaveBeenCalledWith(0.7);
   });
