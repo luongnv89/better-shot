@@ -6,7 +6,7 @@ import {
   Copy, Loader2, Redo2, Undo2,
   Circle, Square, Minus, ArrowUpRight, Type, Hash, MousePointer2, Scan, Trash2,
   Palette, Layers, Maximize2, Move, Settings2, Image as ImageIcon, X, RotateCcw,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Upload,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
@@ -205,6 +205,8 @@ export function ImageEditor({
       toast.error("Unable to open directory picker");
     }
   }, [saveDir, onSaveDirChange]);
+
+  const secondImageFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSecondImageUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -602,16 +604,66 @@ export function ImageEditor({
                     <div className="section-header" style={{ paddingTop: 0 }}>
                       <span className="section-title">Second Image</span>
                     </div>
-                    <AssetGrid
-                      categories={assetCategories}
-                      selectedImage={settings.selectedImageSrc2}
-                      backgroundType={settings.backgroundType}
-                      expanded={true}
-                      uploadedImages={uploadedBackgroundImages}
-                      onImageSelect={actions.handleSecondImageSelect}
-                      onToggle={() => {}}
-                      onUpload={handleSecondImageUpload}
-                    />
+                    {settings.selectedImageSrc2 ? (
+                      <AssetGrid
+                        categories={assetCategories}
+                        selectedImage={settings.selectedImageSrc2}
+                        backgroundType={settings.backgroundType}
+                        expanded={true}
+                        uploadedImages={uploadedBackgroundImages}
+                        onImageSelect={actions.handleSecondImageSelect}
+                        onToggle={() => {}}
+                        onUpload={handleSecondImageUpload}
+                      />
+                    ) : (
+                      <>
+                        <input
+                          ref={secondImageFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleSecondImageUpload(file);
+                            e.target.value = "";
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          onClick={() => secondImageFileInputRef.current?.click()}
+                          aria-label="Add second image for side-by-side comparison"
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            padding: '16px 12px',
+                            border: '2px dashed oklch(0.35 0.009 250)',
+                            borderRadius: 8,
+                            background: 'oklch(0.135 0.008 250)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            color: 'oklch(0.65 0.01 250)',
+                            minWidth: 44,
+                            minHeight: 44,
+                          }}
+                          onMouseEnter={(e) => {
+                            const el = e.currentTarget as HTMLButtonElement;
+                            el.style.borderColor = 'oklch(0.55 0.01 250)';
+                            el.style.color = 'oklch(0.78 0.01 250)';
+                          }}
+                          onMouseLeave={(e) => {
+                            const el = e.currentTarget as HTMLButtonElement;
+                            el.style.borderColor = 'oklch(0.35 0.009 250)';
+                            el.style.color = 'oklch(0.65 0.01 250)';
+                          }}
+                        >
+                          <Upload className="size-5" aria-hidden="true" />
+                          <span style={{ fontSize: 12, fontWeight: 500 }}>Add second image</span>
+                          <span style={{ fontSize: 10, color: 'oklch(0.50 0.009 250)' }}>or drag and drop</span>
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
                 {settings.frameType === "macbook" && (
