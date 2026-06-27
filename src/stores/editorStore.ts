@@ -6,6 +6,7 @@ import { gradientOptions, type GradientOption } from "@/components/editor/Backgr
 import { resolveBackgroundPath, getDefaultBackgroundPath, toStorableValue } from "@/lib/asset-registry";
 import { Annotation } from "@/types/annotations";
 import type { FrameType } from "@/lib/frame-utils";
+import { clampSplitRatio } from "@/lib/side-by-side-utils";
 
 // ============================================================================
 // Types
@@ -311,7 +312,7 @@ function buildSettingsFromPersisted(stored: PersistedEditorSettings): EditorSett
     imageScalingMode: stored.imageScalingMode ?? DEFAULT_SETTINGS.imageScalingMode,
     imageBorderSize: stored.imageBorderSize ?? DEFAULT_SETTINGS.imageBorderSize,
     frameType: stored.frameType ?? DEFAULT_SETTINGS.frameType,
-    sideBySideSplitRatio: stored.sideBySideSplitRatio ?? DEFAULT_SETTINGS.sideBySideSplitRatio,
+    sideBySideSplitRatio: clampSplitRatio(stored.sideBySideSplitRatio ?? DEFAULT_SETTINGS.sideBySideSplitRatio),
   };
 }
 
@@ -769,7 +770,7 @@ export const useEditorStore = create<EditorStore>()(
       },
 
       setSideBySideSplitRatio: (ratio) => {
-        get().updateSettings({ sideBySideSplitRatio: ratio });
+        get().updateSettings({ sideBySideSplitRatio: clampSplitRatio(ratio) });
       },
 
       // ========================================

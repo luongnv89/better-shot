@@ -828,4 +828,22 @@ describe("editorStore - side-by-side second image", () => {
       expect(typeof editorActions.handleSecondImageSelect).toBe("function");
     });
   });
+
+  describe("setSideBySideSplitRatio clamping", () => {
+    it("should clamp an above-range ratio to the max (0.8)", () => {
+      act(() => {
+        useEditorStore.getState().setSideBySideSplitRatio(0.95);
+      });
+
+      expect(useEditorStore.getState().settings.sideBySideSplitRatio).toBe(0.8);
+    });
+
+    it("should clamp a below-range ratio to the min (0.2)", () => {
+      act(() => {
+        useEditorStore.getState().setSideBySideSplitRatio(0.05);
+      });
+
+      expect(useEditorStore.getState().settings.sideBySideSplitRatio).toBe(0.2);
+    });
+  });
 });

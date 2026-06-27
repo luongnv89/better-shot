@@ -48,7 +48,7 @@ export const CaptureHistoryPicker = memo(function CaptureHistoryPicker({
           onClick={onClose}
           aria-label="Close history picker"
           className="tool-btn"
-          style={{ minWidth: 28, minHeight: 28, padding: 0 }}
+          style={{ minWidth: 44, minHeight: 44, padding: 0 }}
         >
           <X className="size-3.5" />
         </button>
