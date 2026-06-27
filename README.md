@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/luongnv89/better-shot/releases"><img src="https://img.shields.io/badge/macOS-10.15%2B-lightgrey?style=flat-square" alt="macOS"></a>
   <a href="https://github.com/luongnv89/better-shot/releases"><img src="https://img.shields.io/github/v/release/luongnv89/better-shot?style=flat-square" alt="Latest release"></a>
-  <a href="https://github.com/luongnv89/better-shot/releases"><img src="https://img.shields.io/badge/notarized-Apple-00b14f?style=flat-square" alt="Notarized by Apple"></a>
+  <a href="https://github.com/luongnv89/better-shot/releases"><img src="https://img.shields.io/badge/signed-Developer%20ID-00b14f?style=flat-square" alt="Signed with Apple Developer ID"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue?style=flat-square" alt="License BSD-3"></a>
   <a href="https://github.com/luongnv89/better-shot/stargazers"><img src="https://img.shields.io/github/stars/luongnv89/better-shot?style=flat-square" alt="GitHub stars"></a>
 </p>
@@ -50,7 +50,7 @@ flowchart LR
     D --> E[Editor opens]
 ```
 
-Pre-built **DMGs are signed and notarized by Apple** &mdash; no "unidentified developer" warning on first launch.
+Pre-built **DMGs are signed with an Apple Developer ID** (hardened runtime). They are **not yet notarized**, so on first launch macOS Gatekeeper shows a warning &mdash; right-click the app &rarr; **Open**, then confirm (or allow it under **System Settings &rarr; Privacy & Security**). You only need to do this once.
 
 ### Option 1: Direct download
 
@@ -83,19 +83,34 @@ brew install --cask bettershot
 2. Launch it once. macOS will ask for **Screen Recording** &mdash; grant it in **System Settings &rarr; Privacy & Security &rarr; Screen Recording**.
 3. Restart BetterShot once after granting the permission.
 
-### Verify the notarization (optional)
+### Verify the signature (optional)
+
+The build is **Developer ID signed with a hardened runtime, but not notarized.** Inspect the signature with:
 
 ```bash
-spctl --assess -vv /Applications/bettershot.app
+codesign -dv --verbose=4 /Applications/bettershot.app
 ```
 
-Expected output:
+Expected (abridged) &mdash; a valid Developer ID chain and the hardened-runtime flag:
 
 ```
-/Applications/bettershot.app: accepted
-source=Notarized Developer ID
-origin=Developer ID Application: Luong NGUYEN (6W9K2M3768)
+Identifier=com.luongnv.bettershot
+CodeDirectory ... flags=0x10000(runtime) ...
+Authority=Developer ID Application: Luong NGUYEN (6W9K2M3768)
+Authority=Developer ID Certification Authority
+Authority=Apple Root CA
+TeamIdentifier=6W9K2M3768
 ```
+
+Because it isn't notarized, Gatekeeper assessment is expected to report `rejected` / `source=Unnotarized Developer ID`:
+
+```bash
+spctl --assess --type execute -vv /Applications/bettershot.app
+# /Applications/bettershot.app: rejected
+# source=Unnotarized Developer ID
+```
+
+This is why first launch needs the right-click &rarr; **Open** step above.
 
 **Requirements:** macOS 10.15 (Catalina) or later. Apple Silicon and Intel both supported.
 
@@ -173,7 +188,7 @@ cd better-shot && pnpm install
 pnpm tauri build
 ```
 
-The unsigned `.app` and `.dmg` land in `src-tauri/target/release/bundle/`. Signed and notarized DMGs require an Apple Developer ID Application certificate in the login keychain and an App Store Connect API key &mdash; the maintainer builds these locally and uploads them to the GitHub release.
+The unsigned `.app` and `.dmg` land in `src-tauri/target/release/bundle/`. Release DMGs are Developer ID signed (hardened runtime) using a certificate in the login keychain &mdash; the maintainer builds these locally and uploads them to the GitHub release. Notarization (which also needs an App Store Connect API key) is not currently applied; see the install note about the first-launch Gatekeeper step.
 
 </details>
 
@@ -206,7 +221,7 @@ pnpm test:rust
 - **Backend:** Rust (Tauri 2) with custom commands for screenshot capture, file dialogs, and temp-workspace lifecycle
 - **Capture:** macOS native APIs via `tauri-plugin-screenshots`
 - **Global hotkeys:** `tauri-plugin-global-shortcut`
-- **Bundle:** Code-signed and notarized DMGs for `aarch64-apple-darwin` and `x86_64-apple-darwin`
+- **Bundle:** Developer ID code-signed DMGs (hardened runtime; notarization planned) for `aarch64-apple-darwin` and `x86_64-apple-darwin`
 
 </details>
 
