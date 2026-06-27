@@ -1,5 +1,5 @@
 import type { ShadowSettings } from "@/hooks/useEditorSettings";
-import { type FrameType, type FrameDimensions, getFrameDimensions, drawFrame, drawSideBySideFrame } from "@/lib/frame-utils";
+import { type FrameType, type FrameDimensions, getFrameDimensions, drawFrame, drawSideBySideFrame, getSideBySideFrameDimensions } from "@/lib/frame-utils";
 
 export type ImageScalingMode = "none" | "fit" | "fit-with-border" | "cover" | "contain";
 
@@ -215,14 +215,12 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
   // For side-by-side, compute dimensions using both images
   let sideBySideDims: FrameDimensions | null = null;
   if (frameType === "side-by-side" && secondImage) {
-    sideBySideDims = {
-      totalWidth: image.width + secondImage.width,
-      totalHeight: Math.max(image.height, secondImage.height),
-      screenX: 0,
-      screenY: 0,
-      screenWidth: image.width + secondImage.width,
-      screenHeight: Math.max(image.height, secondImage.height),
-    };
+    sideBySideDims = getSideBySideFrameDimensions(
+      image.width,
+      image.height,
+      secondImage.width,
+      secondImage.height
+    );
     // Override frameDims so centering uses actual side-by-side dimensions
     frameDims = sideBySideDims;
   }

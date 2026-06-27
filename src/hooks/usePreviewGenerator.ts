@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import type { BackgroundFillSettings, EditorSettings } from "@/stores/editorStore";
 import { createHighQualityCanvas, calculateScaledImageDimensions } from "@/lib/canvas-utils";
 import { drawAnnotationOnCanvas } from "@/lib/annotation-utils";
-import { getFrameDimensions, drawFrame, drawSideBySideFrame } from "@/lib/frame-utils";
+import { getFrameDimensions, drawFrame, drawSideBySideFrame, getSideBySideFrameDimensions } from "@/lib/frame-utils";
 import { Annotation } from "@/types/annotations";
 
 // Image cache with LRU-like cleanup (max 20 images)
@@ -270,17 +270,12 @@ export function usePreviewGenerator({
 
       // Override frameDims for side-by-side using actual second image dimensions
       if (settingsToRender.frameType === "side-by-side" && secondImage) {
-        const sbGap = 0;
-        const sbTotalWidth = screenshotImage.width + secondImage.width + sbGap;
-        const sbTotalHeight = Math.max(screenshotImage.height, secondImage.height);
-        frameDims = {
-          totalWidth: sbTotalWidth,
-          totalHeight: sbTotalHeight,
-          screenX: 0,
-          screenY: 0,
-          screenWidth: sbTotalWidth,
-          screenHeight: sbTotalHeight,
-        };
+        frameDims = getSideBySideFrameDimensions(
+          screenshotImage.width,
+          screenshotImage.height,
+          secondImage.width,
+          secondImage.height
+        );
       }
 
       // Recalculate background dimensions now that frameDims may have been updated
