@@ -167,6 +167,7 @@ interface EditorActions {
   updateAnnotation: (annotation: Annotation) => void;
   deleteAnnotation: (id: string) => void;
   setAnnotations: (annotations: Annotation[]) => void;
+  clearAnnotationsForImageChange: () => void;
   
   // History actions
   undo: () => void;
@@ -820,6 +821,19 @@ export const useEditorStore = create<EditorStore>()(
         });
       },
 
+      // Drop every annotation because the underlying image geometry changed
+      // (crop). Annotation coordinates are only meaningful against the image
+      // they were drawn on, so the history snapshots are stripped too:
+      // otherwise Undo or Redo would put annotations back at stale coordinates
+      // without restoring the image they belonged to.
+      clearAnnotationsForImageChange: () => {
+        set((state) => {
+          state.annotations = [];
+          state.past = state.past.map((snapshot) => ({ ...snapshot, annotations: [] }));
+          state.future = state.future.map((snapshot) => ({ ...snapshot, annotations: [] }));
+        });
+      },
+
       // ========================================
       // History
       // ========================================
@@ -987,6 +1001,7 @@ export const editorActions = {
   get updateAnnotationTransient() { return useEditorStore.getState().updateAnnotationTransient; },
   get deleteAnnotation() { return useEditorStore.getState().deleteAnnotation; },
   get setAnnotations() { return useEditorStore.getState().setAnnotations; },
+  get clearAnnotationsForImageChange() { return useEditorStore.getState().clearAnnotationsForImageChange; },
   get undo() { return useEditorStore.getState().undo; },
   get redo() { return useEditorStore.getState().redo; },
   get pushHistory() { return useEditorStore.getState().pushHistory; },
