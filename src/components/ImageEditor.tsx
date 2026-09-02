@@ -113,6 +113,9 @@ export function ImageEditor({
   const [cropRect, setCropRect] = useState<CropRect | null>(null);
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [isApplyingCrop, setIsApplyingCrop] = useState(false);
+  // Ref for the synchronous guard in handleApplyCrop — avoids stale closure
+  // values when the user clicks Apply twice in rapid succession.
+  const applyingCropRef = useRef(false);
   // Bumped whenever screenshotImage is replaced or a crop session ends, so an
   // in-flight crop can tell that its source image is no longer the live one.
   const imageGenerationRef = useRef(0);
@@ -545,7 +548,7 @@ export function ImageEditor({
   }, [originalImage, actions]);
 
   const handleApplyCrop = useCallback(async () => {
-    if (!screenshotImage || !cropRect || isApplyingCrop) return;
+    if (!screenshotImage || !cropRect || applyingCropRef.current) return;
     // Skip if crop is full image
     const full = fullCropRect(screenshotImage);
     if (
@@ -564,6 +567,7 @@ export function ImageEditor({
     // image is no longer the live one.
     const generation = imageGenerationRef.current;
     const source = screenshotImage;
+    applyingCropRef.current = true;
     setIsApplyingCrop(true);
     try {
       const cropped = await applyCropToImage(source, cropRect);
@@ -592,9 +596,12 @@ export function ImageEditor({
     } finally {
       // Invalidation paths clear this themselves; an obsolete apply must not
       // re-enable the button underneath a newer one.
-      if (imageGenerationRef.current === generation) setIsApplyingCrop(false);
+      if (imageGenerationRef.current === generation) {
+        applyingCropRef.current = false;
+        setIsApplyingCrop(false);
+      }
     }
-  }, [screenshotImage, cropRect, isApplyingCrop, annotations.length, actions]);
+  }, [screenshotImage, cropRect, annotations.length, actions]);
 
   const handleAnnotationAdd = useCallback((annotation: Annotation) => {
     actions.addAnnotation(annotation);
