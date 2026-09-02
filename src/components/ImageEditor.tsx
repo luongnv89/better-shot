@@ -28,6 +28,7 @@ import { usePreviewGenerator } from "@/hooks/usePreviewGenerator";
 import { assetCategories } from "@/hooks/useEditorSettings";
 import { CropOverlay } from "./editor/CropOverlay";
 import { applyCropToImage, fullCropRect, type CropRect } from "@/lib/crop-utils";
+import { selectSideBySideSecondEntry } from "@/lib/side-by-side-utils";
 import { useCaptureHistoryEntries, type CaptureHistoryEntry } from "@/stores/captureHistoryStore";
 import { Store } from "@tauri-apps/plugin-store";
 import {
@@ -475,7 +476,6 @@ export function ImageEditor({
   // side-by-side session (reset when leaving the frame) so a
   // manual "Remove Image 2" is not immediately undone, but still handles the
   // case where capture history hydrates after the frame was already selected.
-  const prevFrameTypeRef = useRef<string | null>(null);
   const hasAutoLoadedSideBySideRef = useRef(false);
   // Status live region so the auto-fill result is announced to screen readers.
   const [secondImageAnnouncement, setSecondImageAnnouncement] = useState("");
@@ -484,14 +484,11 @@ export function ImageEditor({
     const hadImage2 = Boolean(settings.selectedImageSrc2);
 
     if (currentFrameType !== "side-by-side") {
-      prevFrameTypeRef.current = currentFrameType;
       hasAutoLoadedSideBySideRef.current = false;
       return;
     }
 
     // Inside side-by-side
-    prevFrameTypeRef.current = currentFrameType;
-
     if (settings.selectedImageSrc2) {
       hasAutoLoadedSideBySideRef.current = true;
       return;
@@ -509,28 +506,7 @@ export function ImageEditor({
     let cancelled = false;
     (async () => {
       try {
-        let secondEntry: CaptureHistoryEntry | undefined;
-
-        if (captureHistoryEntries.length >= 2) {
-          // If the current image is the newest capture, pair it with the
-          // second-newest. Otherwise (uploaded, external, or an older capture)
-          // keep the user's current image as Image 1 and fill Image 2 with the
-          // newest capture — never replace Image 1 as a side effect of
-          // choosing a frame type.
-          secondEntry =
-            imagePath === captureHistoryEntries[0].savedPath
-              ? captureHistoryEntries[1]
-              : captureHistoryEntries[0];
-        } else {
-          // Only one capture in history
-          if (captureHistoryEntries[0].savedPath !== imagePath) {
-            secondEntry = captureHistoryEntries[0];
-          } else {
-            // Single capture is already the current image — nothing distinct to show.
-            return;
-          }
-        }
-
+        const secondEntry = selectSideBySideSecondEntry(imagePath, captureHistoryEntries);
         if (cancelled) return;
 
         if (secondEntry) {
