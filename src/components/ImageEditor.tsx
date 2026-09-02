@@ -476,8 +476,11 @@ export function ImageEditor({
   // case where capture history hydrates after the frame was already selected.
   const prevFrameTypeRef = useRef<string | null>(null);
   const hasAutoLoadedSideBySideRef = useRef(false);
+  // Status live region so the auto-fill result is announced to screen readers.
+  const [secondImageAnnouncement, setSecondImageAnnouncement] = useState("");
   useEffect(() => {
     const currentFrameType = settings.frameType;
+    const hadImage2 = Boolean(settings.selectedImageSrc2);
 
     if (currentFrameType !== "side-by-side") {
       prevFrameTypeRef.current = currentFrameType;
@@ -545,16 +548,22 @@ export function ImageEditor({
           const dataUrl2 = await pathToDataUrl(secondEntry.savedPath);
           if (cancelled) return;
           editorActions.handleSecondImageSelect(dataUrl2);
+          setSecondImageAnnouncement("Image 2 loaded from last capture");
         }
       } catch (err) {
         console.error("Failed to auto-load side-by-side captures:", err);
         // Allow retry on next transition
         hasAutoLoadedSideBySideRef.current = false;
+        toast.error("Failed to load last capture");
       }
     })();
 
     return () => {
       cancelled = true;
+      // Release the guard when the cancelled load produced no image yet, so a
+      // dep-change or StrictMode remount can retry. A manual "Remove Image 2"
+      // keeps the latch (hadImage2 was true) and no unwanted refill occurs.
+      if (!hadImage2) hasAutoLoadedSideBySideRef.current = false;
     };
   }, [
     storeInitialized,
@@ -1146,6 +1155,9 @@ export function ImageEditor({
                         </div>
                       </div>
                     </div>
+                    {secondImageAnnouncement && (
+                      <span role="status" className="sr-only">{secondImageAnnouncement}</span>
+                    )}
                     {settings.selectedImageSrc2 ? (
                       <>
                         <div
