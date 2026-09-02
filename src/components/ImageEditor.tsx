@@ -6,7 +6,7 @@ import {
   Copy, Loader2, Redo2, Undo2,
   Circle, Square, Minus, ArrowUpRight, Type, Hash, MousePointer2, Scan, Trash2,
   Palette, Layers, Maximize2, Move, Settings2, Image as ImageIcon, X, RotateCcw,
-  PanelLeftClose, PanelLeftOpen, Upload,
+  PanelLeftClose, PanelLeftOpen, Upload, Crop as CropIcon, Check, Ban,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
@@ -26,6 +26,8 @@ import { ExportSettingsPanel } from "./editor/ExportSettingsPanel";
 import { Annotation, ToolType } from "@/types/annotations";
 import { usePreviewGenerator } from "@/hooks/usePreviewGenerator";
 import { assetCategories } from "@/hooks/useEditorSettings";
+import { CropOverlay } from "./editor/CropOverlay";
+import { applyCropToImage, fullCropRect, type CropRect } from "@/lib/crop-utils";
 import { useCaptureHistoryEntries, type CaptureHistoryEntry } from "@/stores/captureHistoryStore";
 import { Store } from "@tauri-apps/plugin-store";
 import {
@@ -106,6 +108,11 @@ export function ImageEditor({
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
   const [activeTab, setActiveTab] = useState<SidebarTab>("image");
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  // Crop state
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropRect, setCropRect] = useState<CropRect | null>(null);
+  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
+  const [isApplyingCrop, setIsApplyingCrop] = useState(false);
   const sideBySideSplitRatio = useEditorStore((s) => s.settings.sideBySideSplitRatio);
   const setSideBySideSplitRatio = useEditorStore((s) => s.setSideBySideSplitRatio);
   const storeInitialized = useEditorStore((s) => s._isInitialized);
@@ -482,6 +489,69 @@ export function ImageEditor({
       toast.error("Unable to reset configuration");
     } finally { setIsResettingConfig(false); }
   }, [actions, isResettingConfig]);
+
+  // ── Crop handlers ──
+  const handleEnterCrop = useCallback(() => {
+    if (!screenshotImage) {
+      toast.error("No image to crop");
+      return;
+    }
+    setCropRect(fullCropRect(screenshotImage));
+    setIsCropping(true);
+  }, [screenshotImage]);
+
+  const handleCancelCrop = useCallback(() => {
+    setIsCropping(false);
+    setCropRect(null);
+  }, []);
+
+  const handleResetCrop = useCallback(() => {
+    if (!originalImage) {
+      toast.error("No original image to restore");
+      return;
+    }
+    setScreenshotImage(originalImage);
+    setImageLoaded(true);
+    setOriginalImage(null);
+    setIsCropping(false);
+    setCropRect(null);
+    toast.success("Crop reset — original restored");
+  }, [originalImage]);
+
+  const handleApplyCrop = useCallback(async () => {
+    if (!screenshotImage || !cropRect || isApplyingCrop) return;
+    // Skip if crop is full image
+    const full = fullCropRect(screenshotImage);
+    if (
+      cropRect.x === 0 &&
+      cropRect.y === 0 &&
+      cropRect.width === full.width &&
+      cropRect.height === full.height
+    ) {
+      setIsCropping(false);
+      setCropRect(null);
+      toast.info("No crop applied — selection is the full image");
+      return;
+    }
+    setIsApplyingCrop(true);
+    try {
+      if (!originalImage) setOriginalImage(screenshotImage);
+      const cropped = await applyCropToImage(screenshotImage, cropRect);
+      setScreenshotImage(cropped);
+      setImageLoaded(true);
+      const avgDimension = (cropped.width + cropped.height) / 2;
+      const defaultPadding = Math.min(Math.round(avgDimension * 0.05), 200);
+      editorActions.setPaddingTransient(defaultPadding);
+      setIsCropping(false);
+      setCropRect(null);
+      toast.success("Crop applied");
+    } catch (err) {
+      console.error("Failed to apply crop:", err);
+      toast.error("Failed to apply crop");
+    } finally {
+      setIsApplyingCrop(false);
+    }
+  }, [screenshotImage, cropRect, isApplyingCrop, originalImage]);
 
   const handleAnnotationAdd = useCallback((annotation: Annotation) => {
     actions.addAnnotation(annotation);
@@ -1090,6 +1160,95 @@ export function ImageEditor({
                   </div>
                 )}
                 <hr className="panel-divider" />
+                {/* ── Crop captured image ── */}
+                <div className="section-header" style={{ paddingTop: 0 }}>
+                  <span className="section-title">Crop</span>
+                </div>
+                {!isCropping ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 11, lineHeight: 1.4, color: 'oklch(0.62 0.01 250)' }}>
+                      Trim the captured image to focus on the relevant area.
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button
+                        onClick={handleEnterCrop}
+                        disabled={!imageLoaded || !screenshotImage}
+                        aria-label="Crop captured image"
+                        className="header-btn header-btn-secondary"
+                        style={{ padding: '7px 10px', fontSize: 11, opacity: !imageLoaded ? 0.4 : 1 }}
+                      >
+                        <CropIcon className="size-3.5" />
+                        <span>Crop Image</span>
+                      </button>
+                      {originalImage && (
+                        <button
+                          onClick={handleResetCrop}
+                          aria-label="Reset crop to original"
+                          className="header-btn header-btn-ghost"
+                          style={{ padding: '7px 10px', fontSize: 11 }}
+                        >
+                          <RotateCcw className="size-3.5" />
+                          <span>Reset Crop</span>
+                        </button>
+                      )}
+                    </div>
+                    {cropRect && isCropping && (
+                      <div style={{ fontSize: 10, color: 'oklch(0.58 0.01 250)', fontFamily: 'var(--font-mono)' }}>
+                        {cropRect.width} × {cropRect.height}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{
+                      padding: '8px 10px',
+                      borderRadius: 6,
+                      background: 'oklch(0.72 0.18 142 / 0.10)',
+                      border: '1px solid oklch(0.72 0.18 142 / 0.25)',
+                      fontSize: 11,
+                      lineHeight: 1.4,
+                      color: 'oklch(0.78 0.12 142)',
+                    }}>
+                      Drag the handles to adjust the crop. Darkened area will be removed.
+                    </div>
+                    {cropRect && (
+                      <div style={{ fontSize: 11, color: 'oklch(0.72 0.01 250)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>
+                        {cropRect.width} × {cropRect.height} · {cropRect.x}, {cropRect.y}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={handleApplyCrop}
+                        disabled={isApplyingCrop}
+                        aria-label="Apply crop"
+                        className="header-btn"
+                        style={{
+                          flex: 1,
+                          padding: '7px 10px',
+                          fontSize: 11,
+                          background: 'oklch(0.72 0.18 142)',
+                          color: 'oklch(0.14 0.01 250)',
+                          border: 'none',
+                          opacity: isApplyingCrop ? 0.6 : 1,
+                        }}
+                      >
+                        {isApplyingCrop ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                        <span>{isApplyingCrop ? 'Applying…' : 'Apply'}</span>
+                      </button>
+                      <button
+                        onClick={handleCancelCrop}
+                        disabled={isApplyingCrop}
+                        aria-label="Cancel crop"
+                        className="header-btn header-btn-ghost"
+                        style={{ flex: 1, padding: '7px 10px', fontSize: 11 }}
+                      >
+                        <Ban className="size-3.5" />
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <hr className="panel-divider" />
                 <ImageRoundnessControl
                   borderRadius={settings.borderRadius}
                   onBorderRadiusChangeTransient={actions.setBorderRadiusTransient}
@@ -1328,7 +1487,35 @@ export function ImageEditor({
           }} />
 
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: 24 }}>
-            {previewUrl ? (
+            {isCropping && screenshotImage && cropRect ? (
+              <div
+                style={{
+                  position: 'relative',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  display: 'inline-block',
+                  lineHeight: 0,
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={screenshotImage.src}
+                  alt="Crop preview"
+                  data-testid="crop-preview-image"
+                  style={{
+                    display: 'block',
+                    maxWidth: 'min(80vw, 900px)',
+                    maxHeight: '70vh',
+                    width: 'auto',
+                    height: 'auto',
+                    borderRadius: 6,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  }}
+                  draggable={false}
+                />
+                <CropOverlay image={screenshotImage} crop={cropRect} onCropChange={setCropRect} />
+              </div>
+            ) : previewUrl ? (
               <AnnotationCanvas
                 annotations={annotations}
                 selectedAnnotation={selectedAnnotation}
