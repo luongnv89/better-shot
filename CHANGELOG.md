@@ -5,6 +5,33 @@ All notable changes to Better Shot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-XX
+
+### Added
+
+- **Auto-fill side-by-side from capture history**: The side-by-side editor now auto-fills both slots with the last two captures, making it faster to compare recent screenshots (#59)
+- **Unsaved-changes indicator in Preferences**: A visual badge alerts you when preferences have been modified but not yet saved (#57)
+- **Accessibility improvements**: ARIA labels added across all editor panels for improved screen-reader support (#56)
+
+### Fixed
+
+- **Dependency vulnerability patches**: Resolved critical and high severity vulnerabilities in project dependencies (#48) (#49)
+
+### Changed
+
+- **PropertiesPanel styles extracted**: Inline styles extracted into a dedicated module for better maintainability (#53)
+
+### Chores
+
+- **Dependency upgrades**: Updated `jsdom` 27.4.0 → 30.0.1 and `@testing-library/jest-dom` 6.9.1 → 7.0.1 (#51) (#52)
+- **CI workflow enabled**: Activated the GitHub Actions CI pipeline (#50)
+- **Documentation updates**: Removed PII from project documents; updated Node.js version to 22 LTS (#44) (#45) (#46)
+
+### Tests
+
+- **Rust integration tests**: Added integration tests for Tauri commands (#55)
+- **Uncovered module tests**: Added tests for previously uncovered modules (#54)
+
 ## [0.5.0] - 2026-06-28
 
 ### Added
