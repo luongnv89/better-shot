@@ -174,7 +174,7 @@ Releases are tagged in semver. See [CHANGELOG.md](./CHANGELOG.md) for the full h
 <details>
 <summary><b>Build from source</b></summary>
 
-**Requirements:** Node.js 18+, pnpm, Rust (latest stable), Xcode Command Line Tools.
+**Requirements:** Node.js 22 LTS or higher, pnpm, Rust (latest stable), Xcode Command Line Tools.
 
 ```bash
 git clone https://github.com/luongnv89/better-shot.git

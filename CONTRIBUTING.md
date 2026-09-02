@@ -34,7 +34,7 @@ Be respectful, constructive, and professional in all interactions. Focus on the 
 
 3. **Set up development environment:**
    - Ensure you have Rust installed (for Tauri backend)
-   - Ensure you have Node.js 18+ and pnpm installed
+   - Ensure you have Node.js 22 LTS or higher and pnpm installed
    - On macOS, grant Screen Recording permission when prompted
 
 ### Installing Better Shot for Testing
@@ -53,7 +53,7 @@ Alternatively, download the latest release from [GitHub Releases](https://github
 
 ### Prerequisites
 
-- **Node.js**: 18 or higher
+- **Node.js**: 22 LTS or higher
 - **pnpm**: Latest version
 - **Rust**: Latest stable version (for Tauri)
 - **macOS**: Required for development (app is macOS-specific)
