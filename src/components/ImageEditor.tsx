@@ -470,8 +470,9 @@ export function ImageEditor({
     return () => { cancelled = true; };
   }, [storeInitialized, pendingSideBySideSecondPath, pathToDataUrl, onSideBySideSecondPathConsumed]);
 
-  // When the user selects side-by-side frame, default to the last 2 captures.
-  // Only runs once per side-by-side session (reset when leaving the frame) so a
+  // When the user selects side-by-side frame, fill Image 2 with the most
+  // recent capture that differs from the current Image 1. Only runs once per
+  // side-by-side session (reset when leaving the frame) so a
   // manual "Remove Image 2" is not immediately undone, but still handles the
   // case where capture history hydrates after the frame was already selected.
   const prevFrameTypeRef = useRef<string | null>(null);
@@ -509,24 +510,17 @@ export function ImageEditor({
     (async () => {
       try {
         let secondEntry: CaptureHistoryEntry | undefined;
-        let firstEntry: CaptureHistoryEntry | undefined;
 
         if (captureHistoryEntries.length >= 2) {
-          const pathInHistory = captureHistoryEntries.some((e) => e.savedPath === imagePath);
-          if (!pathInHistory) {
-            // Uploaded or external image — keep it as Image 1 and use the newest
-            // capture as Image 2 so the user's current work is not discarded.
-            secondEntry = captureHistoryEntries[0];
-          } else if (imagePath === captureHistoryEntries[0].savedPath) {
-            secondEntry = captureHistoryEntries[1];
-          } else if (imagePath === captureHistoryEntries[1].savedPath) {
-            secondEntry = captureHistoryEntries[0];
-          } else {
-            // Current image is an older capture not in the last two — load both
-            // so the frame shows the last 2 captures by default as requested.
-            firstEntry = captureHistoryEntries[0];
-            secondEntry = captureHistoryEntries[1];
-          }
+          // If the current image is the newest capture, pair it with the
+          // second-newest. Otherwise (uploaded, external, or an older capture)
+          // keep the user's current image as Image 1 and fill Image 2 with the
+          // newest capture — never replace Image 1 as a side effect of
+          // choosing a frame type.
+          secondEntry =
+            imagePath === captureHistoryEntries[0].savedPath
+              ? captureHistoryEntries[1]
+              : captureHistoryEntries[0];
         } else {
           // Only one capture in history
           if (captureHistoryEntries[0].savedPath !== imagePath) {
@@ -539,11 +533,6 @@ export function ImageEditor({
 
         if (cancelled) return;
 
-        if (firstEntry) {
-          const dataUrl1 = await pathToDataUrl(firstEntry.savedPath);
-          if (cancelled) return;
-          applyFirstImage(dataUrl1, "Image 1 set from last capture");
-        }
         if (secondEntry) {
           const dataUrl2 = await pathToDataUrl(secondEntry.savedPath);
           if (cancelled) return;
@@ -573,7 +562,6 @@ export function ImageEditor({
     imagePath,
     pendingSideBySideSecondPath,
     pathToDataUrl,
-    applyFirstImage,
   ]);
 
   const handleBackgroundUpload = useCallback(async (file: File) => {
