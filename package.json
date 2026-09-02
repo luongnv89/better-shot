@@ -45,14 +45,20 @@
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
-    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.4.23",
     "jsdom": "^27.4.0",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.26",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.3",
-    "vite": "^7.3.1",
-    "vitest": "^4.0.17"
+    "vite": "^7.3.5",
+    "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "overrides": {
+      "ws": "8.21.0",
+      "browserslist": "4.28.7"
+    }
   },
   "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48"
 }
