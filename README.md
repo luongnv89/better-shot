@@ -94,12 +94,12 @@ codesign -dv --verbose=4 /Applications/bettershot.app
 Expected (abridged) &mdash; a valid Developer ID chain and the hardened-runtime flag:
 
 ```
-Identifier=com.luongnv.bettershot
+Identifier=com.<bundle-id>
 CodeDirectory ... flags=0x10000(runtime) ...
-Authority=Developer ID Application: Luong NGUYEN (6W9K2M3768)
+Authority=Developer ID Application: <Developer Name> (<Team ID>)
 Authority=Developer ID Certification Authority
 Authority=Apple Root CA
-TeamIdentifier=6W9K2M3768
+TeamIdentifier=<Team ID>
 ```
 
 Because it isn't notarized, Gatekeeper assessment is expected to report `rejected` / `source=Unnotarized Developer ID`:

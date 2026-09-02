@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chores
 
-- Switched bundle identifier to `com.luongnv.bettershot`
+- Switched bundle identifier to `com.<bundle-id>`
 - Added hardened-runtime entitlements for notarization
 - Ignored Apple signing assets (`*.provisionprofile`, `*.p12`, `*.mobileprovision`)
 
