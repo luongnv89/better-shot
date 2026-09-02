@@ -470,6 +470,103 @@ export function ImageEditor({
     return () => { cancelled = true; };
   }, [storeInitialized, pendingSideBySideSecondPath, pathToDataUrl, onSideBySideSecondPathConsumed]);
 
+  // When the user selects side-by-side frame, default to the last 2 captures.
+  // Only runs once per side-by-side session (reset when leaving the frame) so a
+  // manual "Remove Image 2" is not immediately undone, but still handles the
+  // case where capture history hydrates after the frame was already selected.
+  const prevFrameTypeRef = useRef<string | null>(null);
+  const hasAutoLoadedSideBySideRef = useRef(false);
+  useEffect(() => {
+    const currentFrameType = settings.frameType;
+
+    if (currentFrameType !== "side-by-side") {
+      prevFrameTypeRef.current = currentFrameType;
+      hasAutoLoadedSideBySideRef.current = false;
+      return;
+    }
+
+    // Inside side-by-side
+    prevFrameTypeRef.current = currentFrameType;
+
+    if (settings.selectedImageSrc2) {
+      hasAutoLoadedSideBySideRef.current = true;
+      return;
+    }
+    if (hasAutoLoadedSideBySideRef.current) return;
+    if (!storeInitialized) return;
+    // If the pending gallery path is still queued, let that effect win.
+    if (pendingSideBySideSecondPath) return;
+    if (captureHistoryEntries.length === 0) return;
+
+    // Mark attempted so we don't loop if the async load is slow and deps re-fire.
+    // hasAutoLoadedSideBySideRef ensures a manual "Remove Image 2" is not immediately re-filled.
+    hasAutoLoadedSideBySideRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        let secondEntry: CaptureHistoryEntry | undefined;
+        let firstEntry: CaptureHistoryEntry | undefined;
+
+        if (captureHistoryEntries.length >= 2) {
+          const pathInHistory = captureHistoryEntries.some((e) => e.savedPath === imagePath);
+          if (!pathInHistory) {
+            // Uploaded or external image — keep it as Image 1 and use the newest
+            // capture as Image 2 so the user's current work is not discarded.
+            secondEntry = captureHistoryEntries[0];
+          } else if (imagePath === captureHistoryEntries[0].savedPath) {
+            secondEntry = captureHistoryEntries[1];
+          } else if (imagePath === captureHistoryEntries[1].savedPath) {
+            secondEntry = captureHistoryEntries[0];
+          } else {
+            // Current image is an older capture not in the last two — load both
+            // so the frame shows the last 2 captures by default as requested.
+            firstEntry = captureHistoryEntries[0];
+            secondEntry = captureHistoryEntries[1];
+          }
+        } else {
+          // Only one capture in history
+          if (captureHistoryEntries[0].savedPath !== imagePath) {
+            secondEntry = captureHistoryEntries[0];
+          } else {
+            // Single capture is already the current image — nothing distinct to show.
+            return;
+          }
+        }
+
+        if (cancelled) return;
+
+        if (firstEntry) {
+          const dataUrl1 = await pathToDataUrl(firstEntry.savedPath);
+          if (cancelled) return;
+          applyFirstImage(dataUrl1, "Image 1 set from last capture");
+        }
+        if (secondEntry) {
+          const dataUrl2 = await pathToDataUrl(secondEntry.savedPath);
+          if (cancelled) return;
+          editorActions.handleSecondImageSelect(dataUrl2);
+        }
+      } catch (err) {
+        console.error("Failed to auto-load side-by-side captures:", err);
+        // Allow retry on next transition
+        hasAutoLoadedSideBySideRef.current = false;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    storeInitialized,
+    settings.frameType,
+    settings.selectedImageSrc2,
+    captureHistoryEntries,
+    imagePath,
+    pendingSideBySideSecondPath,
+    pathToDataUrl,
+    applyFirstImage,
+  ]);
+
   const handleBackgroundUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
