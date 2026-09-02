@@ -28,6 +28,7 @@ import { usePreviewGenerator } from "@/hooks/usePreviewGenerator";
 import { assetCategories } from "@/hooks/useEditorSettings";
 import { CropOverlay } from "./editor/CropOverlay";
 import { applyCropToImage, fullCropRect, type CropRect } from "@/lib/crop-utils";
+import { selectSideBySideSecondEntry } from "@/lib/side-by-side-utils";
 import { useCaptureHistoryEntries, type CaptureHistoryEntry } from "@/stores/captureHistoryStore";
 import { Store } from "@tauri-apps/plugin-store";
 import {
@@ -469,6 +470,75 @@ export function ImageEditor({
     })();
     return () => { cancelled = true; };
   }, [storeInitialized, pendingSideBySideSecondPath, pathToDataUrl, onSideBySideSecondPathConsumed]);
+
+  // When the user selects side-by-side frame, fill Image 2 with the most
+  // recent capture that differs from the current Image 1. Only runs once per
+  // side-by-side session (reset when leaving the frame) so a
+  // manual "Remove Image 2" is not immediately undone, but still handles the
+  // case where capture history hydrates after the frame was already selected.
+  const hasAutoLoadedSideBySideRef = useRef(false);
+  // Status live region so the auto-fill result is announced to screen readers.
+  const [secondImageAnnouncement, setSecondImageAnnouncement] = useState("");
+  useEffect(() => {
+    const currentFrameType = settings.frameType;
+    const hadImage2 = Boolean(settings.selectedImageSrc2);
+
+    if (currentFrameType !== "side-by-side") {
+      hasAutoLoadedSideBySideRef.current = false;
+      return;
+    }
+
+    // Inside side-by-side
+    if (settings.selectedImageSrc2) {
+      hasAutoLoadedSideBySideRef.current = true;
+      return;
+    }
+    if (hasAutoLoadedSideBySideRef.current) return;
+    if (!storeInitialized) return;
+    // If the pending gallery path is still queued, let that effect win.
+    if (pendingSideBySideSecondPath) return;
+    if (captureHistoryEntries.length === 0) return;
+
+    // Mark attempted so we don't loop if the async load is slow and deps re-fire.
+    // hasAutoLoadedSideBySideRef ensures a manual "Remove Image 2" is not immediately re-filled.
+    hasAutoLoadedSideBySideRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const secondEntry = selectSideBySideSecondEntry(imagePath, captureHistoryEntries);
+        if (cancelled) return;
+
+        if (secondEntry) {
+          const dataUrl2 = await pathToDataUrl(secondEntry.savedPath);
+          if (cancelled) return;
+          editorActions.handleSecondImageSelect(dataUrl2);
+          setSecondImageAnnouncement("Image 2 loaded from last capture");
+        }
+      } catch (err) {
+        console.error("Failed to auto-load side-by-side captures:", err);
+        // Allow retry on next transition
+        hasAutoLoadedSideBySideRef.current = false;
+        toast.error("Failed to load last capture");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      // Release the guard when the cancelled load produced no image yet, so a
+      // dep-change or StrictMode remount can retry. A manual "Remove Image 2"
+      // keeps the latch (hadImage2 was true) and no unwanted refill occurs.
+      if (!hadImage2) hasAutoLoadedSideBySideRef.current = false;
+    };
+  }, [
+    storeInitialized,
+    settings.frameType,
+    settings.selectedImageSrc2,
+    captureHistoryEntries,
+    imagePath,
+    pendingSideBySideSecondPath,
+    pathToDataUrl,
+  ]);
 
   const handleBackgroundUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -1049,6 +1119,9 @@ export function ImageEditor({
                         </div>
                       </div>
                     </div>
+                    {secondImageAnnouncement && (
+                      <span role="status" className="sr-only">{secondImageAnnouncement}</span>
+                    )}
                     {settings.selectedImageSrc2 ? (
                       <>
                         <div
