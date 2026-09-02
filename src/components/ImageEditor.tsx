@@ -535,8 +535,14 @@ export function ImageEditor({
     setIsCropping(false);
     setCropRect(null);
     setIsApplyingCrop(false);
+    // Annotations added after the crop use the cropped geometry, so they cannot
+    // be remapped onto the restored original. Cleared unconditionally so
+    // undo/redo cannot bring stale ones back.
+    actions.clearAnnotationsForImageChange();
+    setSelectedAnnotation(null);
+    setShowAnnotationPanel(false);
     toast.success("Crop reset — original restored");
-  }, [originalImage]);
+  }, [originalImage, actions]);
 
   const handleApplyCrop = useCallback(async () => {
     if (!screenshotImage || !cropRect || isApplyingCrop) return;
@@ -1235,11 +1241,6 @@ export function ImageEditor({
                         </button>
                       )}
                     </div>
-                    {cropRect && isCropping && (
-                      <div style={{ fontSize: 10, color: 'oklch(0.66 0.01 250)', fontFamily: 'var(--font-mono)' }}>
-                        {cropRect.width} × {cropRect.height}
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
