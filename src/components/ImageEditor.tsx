@@ -113,6 +113,9 @@ export function ImageEditor({
   const [cropRect, setCropRect] = useState<CropRect | null>(null);
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [isApplyingCrop, setIsApplyingCrop] = useState(false);
+  // Bumped whenever screenshotImage is replaced or a crop session ends, so an
+  // in-flight crop can tell that its source image is no longer the live one.
+  const imageGenerationRef = useRef(0);
   const sideBySideSplitRatio = useEditorStore((s) => s.settings.sideBySideSplitRatio);
   const setSideBySideSplitRatio = useEditorStore((s) => s.setSideBySideSplitRatio);
   const storeInitialized = useEditorStore((s) => s._isInitialized);
@@ -158,6 +161,13 @@ export function ImageEditor({
     setLoadError(null);
     setImageLoaded(false);
     setScreenshotImage(null);
+    // Crop state belongs to the outgoing image: a stale originalImage would let
+    // Reset Crop overwrite the new capture with an unrelated earlier one.
+    imageGenerationRef.current += 1;
+    setIsCropping(false);
+    setCropRect(null);
+    setOriginalImage(null);
+    setIsApplyingCrop(false);
     if (!imagePath) { setLoadError("No image path provided"); return; }
     const img = new Image();
     img.onload = () => {
@@ -232,6 +242,12 @@ export function ImageEditor({
   // Image 1. Image 1 lives in local state, so this is safe regardless of the
   // store reset that fires on imagePath change.
   const applyFirstImage = useCallback((src: string, successMessage: string) => {
+    // Discard crop state for the image being replaced (see the imagePath effect).
+    imageGenerationRef.current += 1;
+    setIsCropping(false);
+    setCropRect(null);
+    setOriginalImage(null);
+    setIsApplyingCrop(false);
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
@@ -501,8 +517,10 @@ export function ImageEditor({
   }, [screenshotImage]);
 
   const handleCancelCrop = useCallback(() => {
+    imageGenerationRef.current += 1;
     setIsCropping(false);
     setCropRect(null);
+    setIsApplyingCrop(false);
   }, []);
 
   const handleResetCrop = useCallback(() => {
@@ -510,11 +528,13 @@ export function ImageEditor({
       toast.error("No original image to restore");
       return;
     }
+    imageGenerationRef.current += 1;
     setScreenshotImage(originalImage);
     setImageLoaded(true);
     setOriginalImage(null);
     setIsCropping(false);
     setCropRect(null);
+    setIsApplyingCrop(false);
     toast.success("Crop reset — original restored");
   }, [originalImage]);
 
@@ -533,10 +553,16 @@ export function ImageEditor({
       toast.info("No crop applied — selection is the full image");
       return;
     }
+    // The image can be replaced (new capture, upload, swap, reset) while the
+    // crop renders. Snapshot the generation and discard a result whose source
+    // image is no longer the live one.
+    const generation = imageGenerationRef.current;
+    const source = screenshotImage;
     setIsApplyingCrop(true);
     try {
-      if (!originalImage) setOriginalImage(screenshotImage);
-      const cropped = await applyCropToImage(screenshotImage, cropRect);
+      const cropped = await applyCropToImage(source, cropRect);
+      if (imageGenerationRef.current !== generation) return;
+      setOriginalImage((prev) => prev ?? source);
       setScreenshotImage(cropped);
       setImageLoaded(true);
       const avgDimension = (cropped.width + cropped.height) / 2;
@@ -544,14 +570,25 @@ export function ImageEditor({
       editorActions.setPaddingTransient(defaultPadding);
       setIsCropping(false);
       setCropRect(null);
-      toast.success("Crop applied");
+      // Annotation coordinates live in the composited canvas space (background,
+      // padding, frame, scaling), which the crop invalidates — there is no crop
+      // offset that remaps them correctly, so they are cleared instead. This
+      // runs unconditionally so undo/redo cannot bring stale ones back.
+      const hadAnnotations = annotations.length > 0;
+      actions.clearAnnotationsForImageChange();
+      setSelectedAnnotation(null);
+      setShowAnnotationPanel(false);
+      toast.success(hadAnnotations ? "Crop applied — existing annotations were cleared" : "Crop applied");
     } catch (err) {
+      if (imageGenerationRef.current !== generation) return;
       console.error("Failed to apply crop:", err);
       toast.error("Failed to apply crop");
     } finally {
-      setIsApplyingCrop(false);
+      // Invalidation paths clear this themselves; an obsolete apply must not
+      // re-enable the button underneath a newer one.
+      if (imageGenerationRef.current === generation) setIsApplyingCrop(false);
     }
-  }, [screenshotImage, cropRect, isApplyingCrop, originalImage]);
+  }, [screenshotImage, cropRect, isApplyingCrop, annotations.length, actions]);
 
   const handleAnnotationAdd = useCallback((annotation: Annotation) => {
     actions.addAnnotation(annotation);
@@ -1513,7 +1550,12 @@ export function ImageEditor({
                   }}
                   draggable={false}
                 />
-                <CropOverlay image={screenshotImage} crop={cropRect} onCropChange={setCropRect} />
+                <CropOverlay
+                  image={screenshotImage}
+                  crop={cropRect}
+                  onCropChange={setCropRect}
+                  onCancel={handleCancelCrop}
+                />
               </div>
             ) : previewUrl ? (
               <AnnotationCanvas

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useEditorStore, editorActions, usePadding, useSettings } from "./editorStore";
 import { act, renderHook } from "@testing-library/react";
+import type { Annotation } from "@/types/annotations";
 
 describe("editorStore - padding feature", () => {
   beforeEach(() => {
@@ -845,5 +846,73 @@ describe("editorStore - side-by-side second image", () => {
 
       expect(useEditorStore.getState().settings.sideBySideSplitRatio).toBe(0.2);
     });
+  });
+});
+
+describe("editorStore - clearAnnotationsForImageChange", () => {
+  function makeAnnotation(id: string): Annotation {
+    return {
+      id,
+      type: "rectangle",
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 50,
+      fill: { hex: "#ff0000", opacity: 100 },
+      border: { width: 2, color: { hex: "#000000", opacity: 100 } },
+      alignment: { horizontal: "left", vertical: "top" },
+    };
+  }
+
+  beforeEach(() => {
+    act(() => {
+      editorActions.reset();
+    });
+  });
+
+  it("should remove every annotation", () => {
+    act(() => {
+      editorActions.addAnnotation(makeAnnotation("a"));
+      editorActions.clearAnnotationsForImageChange();
+    });
+
+    expect(useEditorStore.getState().annotations).toEqual([]);
+  });
+
+  it("should prevent undo from restoring annotations drawn on the pre-crop image", () => {
+    act(() => {
+      editorActions.addAnnotation(makeAnnotation("a"));
+      editorActions.addAnnotation(makeAnnotation("b"));
+      editorActions.clearAnnotationsForImageChange();
+    });
+
+    act(() => { editorActions.undo(); });
+    expect(useEditorStore.getState().annotations).toEqual([]);
+    act(() => { editorActions.undo(); });
+    expect(useEditorStore.getState().annotations).toEqual([]);
+  });
+
+  it("should prevent redo from restoring them either", () => {
+    act(() => {
+      editorActions.addAnnotation(makeAnnotation("a"));
+      editorActions.undo();
+      editorActions.clearAnnotationsForImageChange();
+    });
+
+    act(() => { editorActions.redo(); });
+    expect(useEditorStore.getState().annotations).toEqual([]);
+  });
+
+  it("should leave settings history intact so other edits remain undoable", () => {
+    act(() => {
+      editorActions.setPadding(64);
+      editorActions.addAnnotation(makeAnnotation("a"));
+      editorActions.clearAnnotationsForImageChange();
+    });
+
+    const undoDepth = useEditorStore.getState().past.length;
+    expect(undoDepth).toBeGreaterThan(0);
+    act(() => { editorActions.undo(); });
+    expect(useEditorStore.getState().past.length).toBe(undoDepth - 1);
   });
 });
