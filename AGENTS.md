@@ -1,6 +1,44 @@
----
-name: ui-skills
-description: Opinionated constraints for building better interfaces with agents.
+# BetterShot — Agent Guide
+
+> See `.pi/PROJECT.md` for full toolchain notes and `CLAUDE.md` for Claude-specific guidance.
+
+## Project
+
+macOS screenshot tool — Tauri 2 + React 19 + Vite 7 + TypeScript. Capture → edit → share, 100% local.
+
+## Commands (repo root)
+
+```bash
+pnpm install          # install (pnpm 10.28, Node 22 LTS+)
+pnpm run build        # tsc && vite build
+pnpm run lint:ci      # tsc --noEmit — 0 errors is green
+pnpm test             # vitest run — test command of record, 212/212 is green
+pnpm run test:coverage # vitest run --coverage (V8)
+pnpm run test:rust    # cd src-tauri && cargo test
+pnpm tauri dev        # Vite + Rust hot-reload (macOS + Rust required)
+pnpm tauri build      # bundle to src-tauri/target/release/bundle/
+```
+
+Baseline-green check: `pnpm run build && pnpm test && pnpm run lint:ci`
+
+## Toolchain / Environment
+
+- Node.js 22 LTS+, pnpm 10.28, Rust stable, Xcode CLT, **macOS 10.15+ only**
+- Lockfiles: `pnpm-lock.yaml` (authoritative) + `package-lock.json`
+
+## Structure
+
+- `src/components/editor/` — editor panels (PropertiesPanel, AnnotationCanvas, etc.)
+- `src/components/ui/` — Radix-based primitives
+- `src/hooks/`, `src/lib/`, `src/stores/`, `src/types/`
+- `src-tauri/` — Rust backend (commands, screenshot, image, clipboard)
+
+## Conventions
+
+- Branch: `type/issue-number-short-desc` per `.gitissue.yml`
+- Strict TS, `pnpm run lint:ci` green, no `any` without rationale
+- Reuse existing patterns; search before creating
+
 ---
 
 # UI Skills
