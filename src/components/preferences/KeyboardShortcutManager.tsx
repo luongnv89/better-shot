@@ -88,6 +88,8 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
   const [editingId, setEditingId] = useState<string | null>(null);
   const [recordedShortcut, setRecordedShortcut] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [hasUnsaved, setHasUnsaved] = useState(false);
+  const savedRef = useRef<string>(JSON.stringify(DEFAULT_SHORTCUTS));
   const recordingRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -96,14 +98,14 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
         const store = await Store.load("settings.json");
         const saved = await store.get<KeyboardShortcut[]>("keyboardShortcuts");
         if (saved && saved.length > 0) {
-          // Merge saved shortcuts with defaults, preserving all saved values
-          // Only add missing default shortcuts that don't exist in saved
           const savedIds = new Set(saved.map((s) => s.id));
           const missingDefaults = DEFAULT_SHORTCUTS.filter((d) => !savedIds.has(d.id));
           const mergedShortcuts = [...saved, ...missingDefaults];
           setShortcuts(mergedShortcuts);
+          savedRef.current = JSON.stringify(mergedShortcuts);
         } else {
           setShortcuts(DEFAULT_SHORTCUTS);
+          savedRef.current = JSON.stringify(DEFAULT_SHORTCUTS);
         }
       } catch (err) {
         console.error("Failed to load shortcuts:", err);
@@ -112,6 +114,41 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
     };
     loadShortcuts();
   }, []);
+
+  // Persist unsaved changes on unmount or page hide
+  useEffect(() => {
+    const persist = async () => {
+      if (!hasUnsaved) return;
+      try {
+        const store = await Store.load("settings.json");
+        await store.set("keyboardShortcuts", shortcuts);
+        await store.save();
+        savedRef.current = JSON.stringify(shortcuts);
+        setHasUnsaved(false);
+        onShortcutsChange?.(shortcuts);
+      } catch (err) {
+        console.error("Failed to persist shortcuts on exit:", err);
+      }
+    };
+    const onBeforeUnload = () => {
+      // Best-effort synchronous persist not possible for async Store; keep handler for browsers
+      if (hasUnsaved) persist();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasUnsaved) persist();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      // Persist on unmount (React navigation back to main)
+      if (hasUnsaved) {
+        // fire-and-forget; parent will re-read on next mount
+        void persist();
+      }
+    };
+  }, [hasUnsaved, shortcuts, onShortcutsChange]);
 
   // Keyboard recording effect
   useEffect(() => {
@@ -135,28 +172,17 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
       }
     };
 
-    const handleKeyUp = async (e: KeyboardEvent) => {
+    const handleKeyUp = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
-      // Only save when we have a recorded shortcut and user releases a key
       if (recordedShortcut && editingId) {
         const newShortcuts = shortcuts.map((s) =>
           s.id === editingId ? { ...s, shortcut: recordedShortcut } : s
         );
         setShortcuts(newShortcuts);
-        
-        try {
-          const store = await Store.load("settings.json");
-          await store.set("keyboardShortcuts", newShortcuts);
-          await store.save();
-          onShortcutsChange?.(newShortcuts);
-          toast.success("Shortcut updated");
-        } catch (err) {
-          console.error("Failed to save shortcuts:", err);
-          toast.error("Failed to save shortcuts");
-        }
-
+        setHasUnsaved(true);
+        toast.success("Shortcut updated — unsaved changes");
         setIsRecording(false);
         setEditingId(null);
         setRecordedShortcut(null);
@@ -172,17 +198,26 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
     };
   }, [isRecording, editingId, recordedShortcut, shortcuts, onShortcutsChange]);
 
-  const saveShortcuts = useCallback(async (newShortcuts: KeyboardShortcut[]) => {
+  const persistShortcuts = useCallback(async (toSave: KeyboardShortcut[]) => {
     try {
       const store = await Store.load("settings.json");
-      await store.set("keyboardShortcuts", newShortcuts);
+      await store.set("keyboardShortcuts", toSave);
       await store.save();
-      onShortcutsChange?.(newShortcuts);
+      savedRef.current = JSON.stringify(toSave);
+      setHasUnsaved(false);
+      onShortcutsChange?.(toSave);
+      toast.success("Shortcuts saved");
     } catch (err) {
       console.error("Failed to save shortcuts:", err);
       toast.error("Failed to save shortcuts");
     }
   }, [onShortcutsChange]);
+
+  const saveShortcuts = useCallback((newShortcuts: KeyboardShortcut[]) => {
+    // Local-only, marks unsaved — actual persist happens on explicit Save or exit
+    setShortcuts(newShortcuts);
+    setHasUnsaved(JSON.stringify(newShortcuts) !== savedRef.current);
+  }, []);
 
   const handleStartRecording = useCallback((shortcut: KeyboardShortcut) => {
     setEditingId(shortcut.id);
@@ -198,19 +233,17 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
     setRecordedShortcut(null);
   }, []);
 
-  const handleToggle = useCallback(async (id: string) => {
+  const handleToggle = useCallback((id: string) => {
     const newShortcuts = shortcuts.map((s) =>
       s.id === id ? { ...s, enabled: !s.enabled } : s
     );
-    setShortcuts(newShortcuts);
-    await saveShortcuts(newShortcuts);
+    saveShortcuts(newShortcuts);
   }, [shortcuts, saveShortcuts]);
 
-  const handleDelete = useCallback(async (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     const newShortcuts = shortcuts.filter((s) => s.id !== id);
-    setShortcuts(newShortcuts);
-    await saveShortcuts(newShortcuts);
-    toast.success("Shortcut removed");
+    saveShortcuts(newShortcuts);
+    toast.success("Shortcut removed — unsaved changes");
   }, [shortcuts, saveShortcuts]);
 
   const handleAdd = useCallback(() => {
@@ -222,25 +255,39 @@ export function KeyboardShortcutManager({ onShortcutsChange }: KeyboardShortcutM
       enabled: false,
     };
     const newShortcuts = [...shortcuts, newShortcut];
-    setShortcuts(newShortcuts);
     saveShortcuts(newShortcuts);
-    // Start recording for the new shortcut
     setTimeout(() => handleStartRecording(newShortcut), 100);
   }, [shortcuts, saveShortcuts, handleStartRecording]);
 
+  const handleSave = useCallback(() => {
+    void persistShortcuts(shortcuts);
+  }, [shortcuts, persistShortcuts]);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground">Keyboard Shortcuts</label>
-        <Button
-          type="button"
-          variant="cta"
-          size="lg"
-          onClick={handleAdd}
-        >
-          <Plus className="size-3 mr-1" aria-hidden="true" />
-          Add
-        </Button>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground">Keyboard Shortcuts</label>
+          {hasUnsaved && (
+            <span
+              data-testid="unsaved-indicator"
+              className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded"
+            >
+              Unsaved changes
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {hasUnsaved && (
+            <Button type="button" variant="cta" size="lg" onClick={handleSave} data-testid="save-shortcuts">
+              Save
+            </Button>
+          )}
+          <Button type="button" variant="cta" size="lg" onClick={handleAdd}>
+            <Plus className="size-3 mr-1" aria-hidden="true" />
+            Add
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">
