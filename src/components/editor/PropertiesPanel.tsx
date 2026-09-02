@@ -111,7 +111,7 @@ export const PropertiesPanel = memo(function PropertiesPanel({ annotation, onUpd
   };
 
   return (
-    <div>
+    <div aria-label="Annotation properties" role="region">
       {annotation.type === "blur" && (
         <Row label="Blur Intensity">
           <SliderWithValue
