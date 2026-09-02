@@ -715,7 +715,7 @@ pub async fn native_capture_window(save_dir: String) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{unique_destination, validate_within};
+    use super::{sanitize_filename, unique_destination, validate_within};
     use std::fs;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -827,4 +827,71 @@ mod tests {
             .expect_err("a missing file must error rather than validate");
         assert!(err.contains("already deleted") || err.contains("not found"));
     }
+
+    // ---- sanitize_filename (used by copy_file_to_temp_workspace) ----
+
+    #[test]
+    fn sanitize_filename_keeps_alphanumeric() {
+        assert_eq!(sanitize_filename("photo123.png"), "photo123.png");
+        assert_eq!(sanitize_filename("my-file_1.jpg"), "my-file_1.jpg");
+    }
+
+    #[test]
+    fn sanitize_filename_replaces_special_chars() {
+        assert_eq!(sanitize_filename("my photo!.png"), "my_photo_.png");
+        assert_eq!(sanitize_filename("a/b\\c.png"), "a_b_c.png");
+    }
+
+    #[test]
+    fn sanitize_filename_handles_empty_and_whitespace() {
+        assert_eq!(sanitize_filename(""), "photo");
+        assert_eq!(sanitize_filename("   "), "photo");
+        assert_eq!(sanitize_filename("  photo.png  "), "photo.png");
+    }
+
+    // ---- copy_file_to_temp_workspace + delete_temp_workspace_file (handler pair) ----
+
+    #[test]
+    fn copy_file_to_temp_workspace_success_and_delete() {
+        // Create a source file
+        let src_dir = TempDir::new();
+        let src = src_dir.0.join("source image!.png");
+        fs::write(&src, b"fake png").unwrap();
+
+        // Copy to temp workspace
+        let dest_str = super::copy_file_to_temp_workspace(src.to_string_lossy().to_string())
+            .expect("copy to temp workspace should succeed");
+        let dest = PathBuf::from(&dest_str);
+        assert!(dest.exists(), "destination should exist after copy");
+        assert_eq!(fs::read(&dest).unwrap(), b"fake png");
+
+        // Success path: delete the temp file
+        super::delete_temp_workspace_file(dest_str.clone()).expect("delete should succeed");
+        assert!(!dest.exists(), "destination should be gone after delete");
+
+        // Error path: delete again should fail (already deleted)
+        let err = super::delete_temp_workspace_file(dest_str).expect_err("second delete must fail");
+        assert!(err.contains("already deleted") || err.contains("not found"));
+    }
+
+    #[test]
+    fn copy_file_to_temp_workspace_rejects_missing_file() {
+        let missing = "/tmp/bettershot-test-missing-99999.png";
+        // Ensure it does not exist
+        let _ = fs::remove_file(missing);
+        let err = super::copy_file_to_temp_workspace(missing.to_string())
+            .expect_err("missing source must error");
+        assert!(err.contains("not found") || err.contains("path is invalid"));
+    }
+
+    #[test]
+    fn delete_temp_workspace_rejects_outside_workspace() {
+        let src_dir = TempDir::new();
+        let outside = src_dir.0.join("outside.png");
+        fs::write(&outside, b"x").unwrap();
+        let err = super::delete_temp_workspace_file(outside.to_string_lossy().to_string())
+            .expect_err("file outside workspace must be rejected");
+        assert!(err.contains("outside the bettershot-uploads workspace") || err.contains("not found"));
+    }
+
 }
