@@ -638,11 +638,17 @@ export function ImageEditor({
       if ((e.metaKey || e.ctrlKey) && e.key === "c" && e.shiftKey) { e.preventDefault(); if (imageLoaded && !isSaving && !isCopying) handleCopy(); }
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
       if ((e.metaKey || e.ctrlKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) { e.preventDefault(); handleRedo(); }
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape") {
+        // The crop overlay handles Escape itself and marks the event handled, so
+        // one press cancels the crop instead of also closing the editor.
+        if (e.defaultPrevented) return;
+        if (isCropping) { handleCancelCrop(); return; }
+        onCancel();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [imageLoaded, isSaving, isCopying, handleSave, handleCopy, handleUndo, handleRedo, onCancel]);
+  }, [imageLoaded, isSaving, isCopying, handleSave, handleCopy, handleUndo, handleRedo, onCancel, isCropping, handleCancelCrop]);
 
   const selectedGradientOption = gradientOptions.find(g => g.id === settings.gradientId) || gradientOptions[0];
   const selectedMacbookGradientOption =
@@ -1203,7 +1209,7 @@ export function ImageEditor({
                 </div>
                 {!isCropping ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 11, lineHeight: 1.4, color: 'oklch(0.62 0.01 250)' }}>
+                    <div style={{ fontSize: 11, lineHeight: 1.4, color: 'oklch(0.66 0.01 250)' }}>
                       Trim the captured image to focus on the relevant area.
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1230,7 +1236,7 @@ export function ImageEditor({
                       )}
                     </div>
                     {cropRect && isCropping && (
-                      <div style={{ fontSize: 10, color: 'oklch(0.58 0.01 250)', fontFamily: 'var(--font-mono)' }}>
+                      <div style={{ fontSize: 10, color: 'oklch(0.66 0.01 250)', fontFamily: 'var(--font-mono)' }}>
                         {cropRect.width} × {cropRect.height}
                       </div>
                     )}
@@ -1249,7 +1255,7 @@ export function ImageEditor({
                       Drag the handles to adjust the crop. Darkened area will be removed.
                     </div>
                     {cropRect && (
-                      <div style={{ fontSize: 11, color: 'oklch(0.72 0.01 250)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>
+                      <div style={{ fontSize: 11, color: 'oklch(0.66 0.01 250)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>
                         {cropRect.width} × {cropRect.height} · {cropRect.x}, {cropRect.y}
                       </div>
                     )}
@@ -1541,11 +1547,11 @@ export function ImageEditor({
                   data-testid="crop-preview-image"
                   style={{
                     display: 'block',
-                    maxWidth: 'min(80vw, 900px)',
+                    maxWidth: 'min(80vw, 100%)',
                     maxHeight: '70vh',
                     width: 'auto',
                     height: 'auto',
-                    borderRadius: 6,
+                    borderRadius: settings.borderRadius,
                     boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                   }}
                   draggable={false}
