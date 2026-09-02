@@ -52,7 +52,7 @@ describe("useEditorSettings", () => {
 
   it("setGradient updates gradient fields", () => {
     const { result } = renderHook(() => useEditorSettings());
-    const gradient = { id: "g2", src: "grad.jpg", colors: ["#000", "#fff"] as [string, string] };
+    const gradient = { id: "g2", src: "grad.jpg", name: "G2", colors: ["#000", "#fff"] as [string, string] };
     act(() => result.current[1].setGradient(gradient));
     expect(result.current[0].gradientId).toBe("g2");
     expect(result.current[0].gradientSrc).toBe("grad.jpg");

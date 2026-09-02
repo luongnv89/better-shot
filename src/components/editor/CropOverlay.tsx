@@ -215,6 +215,26 @@ export function CropOverlay({ image, crop, onCropChange, onCropChangeEnd, onCanc
       </div>
 
       {/* Handles */}
+      {/* Visible cancel instruction for accessibility */}
+      <div
+        data-testid="crop-cancel-hint"
+        aria-hidden="false"
+        style={{
+          position: "absolute",
+          bottom: 8,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "rgba(0,0,0,0.7)",
+          color: "white",
+          fontSize: 11,
+          padding: "4px 8px",
+          borderRadius: 4,
+          pointerEvents: "none",
+        }}
+      >
+        Press Esc to cancel — drag to move, arrow keys to adjust
+      </div>
+
       {handles.map((h) => {
         const pos: React.CSSProperties = {};
         if (h.includes("n")) pos.top = `${percent.top}%`;
