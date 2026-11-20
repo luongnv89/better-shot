@@ -1032,7 +1032,7 @@ export function ImageEditor({
                       <div>
                         <span className="section-title">First Image</span>
                         <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.4, color: 'oklch(0.62 0.01 250)' }}>
-                          Replace image 1 on the left side.
+                          {settings.frameType === "stacked" ? "Replace image 1 at the top." : "Replace image 1 on the left side."}
                         </div>
                       </div>
                     </div>
@@ -1117,7 +1117,7 @@ export function ImageEditor({
                       <div>
                         <span className="section-title">Second Image</span>
                         <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.4, color: 'oklch(0.62 0.01 250)' }}>
-                          Upload image 2 for the right side.
+                          {settings.frameType === "stacked" ? "Upload image 2 for the bottom." : "Upload image 2 for the right side."}
                         </div>
                       </div>
                     </div>
