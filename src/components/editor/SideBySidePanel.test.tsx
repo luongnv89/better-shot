@@ -120,4 +120,20 @@ describe("SideBySidePanel", () => {
 
     expect(screen.getByText(/Adjust the split ratio/)).toBeInTheDocument();
   });
+
+  it("uses stacked wording in vertical orientation", () => {
+    render(
+      <SideBySidePanel
+        splitRatio={0.5}
+        onSplitRatioChange={vi.fn()}
+        onSwapImages={vi.fn()}
+        orientation="vertical"
+      />
+    );
+
+    expect(screen.getByText("Stacked")).toBeInTheDocument();
+    expect(screen.getByLabelText("Swap top and bottom images")).toBeInTheDocument();
+    expect(screen.getByText("Top")).toBeInTheDocument();
+    expect(screen.getByText("Bottom")).toBeInTheDocument();
+  });
 });

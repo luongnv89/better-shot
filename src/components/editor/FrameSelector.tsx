@@ -110,6 +110,22 @@ const FRAME_OPTIONS: FrameOption[] = [
       </svg>
     ),
   },
+  {
+    type: "stacked",
+    label: "Stacked",
+    preview: (
+      <svg width="22" height="30" viewBox="0 0 22 30" fill="none">
+        {/* Container */}
+        <rect x="0.5" y="0.5" width="21" height="29" rx="3.5" fill="#1a1a1a" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+        {/* Top image */}
+        <rect x="2.5" y="2.5" width="17" height="11.5" rx="2.5" fill="#2d63d8" />
+        {/* Divider */}
+        <line x1="2.5" y1="15" x2="19.5" y2="15" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        {/* Bottom image */}
+        <rect x="2.5" y="16" width="17" height="11.5" rx="2.5" fill="#8b5cf6" />
+      </svg>
+    ),
+  },
 ];
 
 interface FrameSelectorProps {
@@ -126,7 +142,7 @@ export const FrameSelector = memo(function FrameSelector({
       <div className="section-header" style={{ paddingTop: 0 }}>
         <span className="section-title">Frame</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
         {FRAME_OPTIONS.map(({ type, label, preview }) => {
           const isActive = frameType === type;
           return (

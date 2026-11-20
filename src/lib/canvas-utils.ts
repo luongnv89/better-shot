@@ -1,5 +1,5 @@
 import type { ShadowSettings } from "@/hooks/useEditorSettings";
-import { type FrameType, type FrameDimensions, getFrameDimensions, drawFrame, drawSideBySideFrame, getSideBySideFrameDimensions } from "@/lib/frame-utils";
+import { type FrameType, type FrameDimensions, getFrameDimensions, drawFrame, drawSideBySideFrame, getDualImageFrameDimensions, isDualImageFrame } from "@/lib/frame-utils";
 
 export type ImageScalingMode = "none" | "fit" | "fit-with-border" | "cover" | "contain";
 
@@ -206,16 +206,17 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
   } = options;
 
   // When a frame is active, compute frame dimensions first so we know the total size.
-  // Side-by-side only behaves like a frame once a second foreground image exists;
-  // otherwise the main photo renders normally over the shared background.
-  let frameDims = frameType !== "none" && frameType !== "side-by-side"
+  // Two-image frames (side-by-side / stacked) only behave like a frame once a
+  // second foreground image exists; otherwise the main photo renders normally.
+  let frameDims = frameType !== "none" && !isDualImageFrame(frameType)
     ? getFrameDimensions(frameType, image.width, image.height)
     : null;
 
-  // For side-by-side, compute dimensions using both images
+  // For two-image frames, compute dimensions using both images
   let sideBySideDims: FrameDimensions | null = null;
-  if (frameType === "side-by-side" && secondImage) {
-    sideBySideDims = getSideBySideFrameDimensions(
+  if (isDualImageFrame(frameType) && secondImage) {
+    sideBySideDims = getDualImageFrameDimensions(
+      frameType,
       image.width,
       image.height,
       secondImage.width,
@@ -335,7 +336,7 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
     ctx.drawImage(bgCanvas, 0, 0);
 
     ctx.save();
-    const shouldApplyImageShadow = frameType !== "side-by-side" || !secondImage;
+    const shouldApplyImageShadow = !isDualImageFrame(frameType) || !secondImage;
     ctx.shadowColor = shouldApplyImageShadow ? `rgba(0, 0, 0, ${shadow.opacity / 100})` : "transparent";
     ctx.shadowBlur = shouldApplyImageShadow ? shadow.blur : 0;
     ctx.shadowOffsetX = shouldApplyImageShadow ? shadow.offsetX : 0;
@@ -374,8 +375,8 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
         }
       }
 
-      if (frameType === "side-by-side" && secondImage) {
-        // Side-by-side mode: draw both photos on the shared background.
+      if (isDualImageFrame(frameType) && secondImage) {
+        // Two-image mode: draw both photos on the shared background.
         // Shadow is set inside drawSideBySideFrame (the ctx-level shadow is
         // disabled above for this mode so the whole composite isn't shadowed).
         drawSideBySideFrame(
@@ -389,6 +390,7 @@ export function createHighQualityCanvas(options: RenderOptions): HTMLCanvasEleme
             splitRatio: sideBySideSplitRatio,
             borderRadius,
             shadow,
+            orientation: frameType === "stacked" ? "vertical" : "horizontal",
           }
         );
       } else {

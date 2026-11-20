@@ -12,7 +12,15 @@
  * screenshot size without raster artifacts.
  */
 
-export type FrameType = "none" | "terminal" | "iphone" | "macbook" | "side-by-side";
+export type FrameType = "none" | "terminal" | "iphone" | "macbook" | "side-by-side" | "stacked";
+
+/** Frame types that compose two foreground images (Image 1 + Image 2). */
+export type DualImageFrameType = "side-by-side" | "stacked";
+
+/** True for frame types that lay out two images in one composition. */
+export function isDualImageFrame(frameType: FrameType | null | undefined): frameType is DualImageFrameType {
+  return frameType === "side-by-side" || frameType === "stacked";
+}
 
 export interface FrameDimensions {
   /** Total width of the framed composition */
@@ -600,6 +608,44 @@ export function getSideBySideFrameDimensions(
   };
 }
 
+/**
+ * Get dimensions for the stacked frame: two images arranged vertically,
+ * Image 1 on top and Image 2 below.
+ */
+export function getStackedFrameDimensions(
+  topWidth: number,
+  topHeight: number,
+  bottomWidth: number,
+  bottomHeight: number
+): FrameDimensions {
+  const totalWidth = Math.max(topWidth, bottomWidth);
+  const totalHeight = topHeight + bottomHeight;
+
+  return {
+    totalWidth,
+    totalHeight,
+    screenX: 0,
+    screenY: 0,
+    screenWidth: totalWidth,
+    screenHeight: totalHeight,
+  };
+}
+
+/**
+ * Dimensions for a two-image frame (side-by-side or stacked).
+ */
+export function getDualImageFrameDimensions(
+  frameType: DualImageFrameType,
+  firstWidth: number,
+  firstHeight: number,
+  secondWidth: number,
+  secondHeight: number
+): FrameDimensions {
+  return frameType === "stacked"
+    ? getStackedFrameDimensions(firstWidth, firstHeight, secondWidth, secondHeight)
+    : getSideBySideFrameDimensions(firstWidth, firstHeight, secondWidth, secondHeight);
+}
+
 export interface SideBySideShadow {
   blur: number;
   offsetX: number;
@@ -613,9 +659,14 @@ export interface SideBySideOptions {
   borderRadius?: number;
   /** Drop shadow drawn under each photo. Omit/null to disable. */
   shadow?: SideBySideShadow | null;
+  /**
+   * "horizontal" (default) places Image 1 left of Image 2; "vertical" places
+   * Image 1 above Image 2. splitRatio applies along the chosen axis.
+   */
+  orientation?: "horizontal" | "vertical";
 }
 
-/** Fraction of the composition width reserved as the gap between the two photos. */
+/** Fraction of the composition length (along the split axis) reserved as the gap between the two photos. */
 const SIDE_BY_SIDE_GAP_RATIO = 0.04;
 
 /**
@@ -636,15 +687,16 @@ export function drawSideBySideFrame(
   rightImage: HTMLImageElement,
   options: SideBySideOptions = {}
 ) {
-  const { splitRatio = 0.5, borderRadius = 0, shadow = null } = options;
+  const { splitRatio = 0.5, borderRadius = 0, shadow = null, orientation = "horizontal" } = options;
   const { totalWidth, totalHeight } = dims;
+  const isVertical = orientation === "vertical";
 
-  const gap = Math.round(totalWidth * SIDE_BY_SIDE_GAP_RATIO);
-  const contentWidth = totalWidth - gap;
-  const leftSlotWidth = Math.round(contentWidth * splitRatio);
-  const rightSlotWidth = contentWidth - leftSlotWidth;
-  const leftX = x;
-  const rightX = x + leftSlotWidth + gap;
+  // Split along the width (horizontal) or the height (vertical).
+  const splitLength = isVertical ? totalHeight : totalWidth;
+  const gap = Math.round(splitLength * SIDE_BY_SIDE_GAP_RATIO);
+  const contentLength = splitLength - gap;
+  const firstSlotLength = Math.round(contentLength * splitRatio);
+  const secondSlotLength = contentLength - firstSlotLength;
 
   const drawContainedImage = (
     source: HTMLImageElement,
@@ -688,8 +740,13 @@ export function drawSideBySideFrame(
     ctx.restore();
   };
 
-  drawContainedImage(leftImage, leftX, y, leftSlotWidth, totalHeight);
-  drawContainedImage(rightImage, rightX, y, rightSlotWidth, totalHeight);
+  if (isVertical) {
+    drawContainedImage(leftImage, x, y, totalWidth, firstSlotLength);
+    drawContainedImage(rightImage, x, y + firstSlotLength + gap, totalWidth, secondSlotLength);
+  } else {
+    drawContainedImage(leftImage, x, y, firstSlotLength, totalHeight);
+    drawContainedImage(rightImage, x + firstSlotLength + gap, y, secondSlotLength, totalHeight);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -706,6 +763,7 @@ export function getFrameDimensions(
     case "iphone":   return getIphoneFrameDimensions(screenshotWidth, screenshotHeight);
     case "macbook":  return getMacbookFrameDimensions(screenshotWidth, screenshotHeight);
     case "side-by-side": return getSideBySideFrameDimensions(screenshotWidth, screenshotHeight, screenshotWidth, screenshotHeight);
+    case "stacked":      return getStackedFrameDimensions(screenshotWidth, screenshotHeight, screenshotWidth, screenshotHeight);
     default:         return null;
   }
 }

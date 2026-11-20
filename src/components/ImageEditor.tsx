@@ -29,6 +29,7 @@ import { assetCategories } from "@/hooks/useEditorSettings";
 import { CropOverlay } from "./editor/CropOverlay";
 import { applyCropToImage, fullCropRect, type CropRect } from "@/lib/crop-utils";
 import { selectSideBySideSecondEntry } from "@/lib/side-by-side-utils";
+import { isDualImageFrame } from "@/lib/frame-utils";
 import { useCaptureHistoryEntries, type CaptureHistoryEntry } from "@/stores/captureHistoryStore";
 import { Store } from "@tauri-apps/plugin-store";
 import {
@@ -483,12 +484,12 @@ export function ImageEditor({
     const currentFrameType = settings.frameType;
     const hadImage2 = Boolean(settings.selectedImageSrc2);
 
-    if (currentFrameType !== "side-by-side") {
+    if (!isDualImageFrame(currentFrameType)) {
       hasAutoLoadedSideBySideRef.current = false;
       return;
     }
 
-    // Inside side-by-side
+    // Inside a two-image frame (side-by-side or stacked)
     if (settings.selectedImageSrc2) {
       hasAutoLoadedSideBySideRef.current = true;
       return;
@@ -1002,9 +1003,10 @@ export function ImageEditor({
                   frameType={settings.frameType}
                   onFrameTypeChange={actions.setFrameType}
                 />
-                {settings.frameType === "side-by-side" && (
+                {isDualImageFrame(settings.frameType) && (
                   <>
                     <SideBySidePanel
+                      orientation={settings.frameType === "stacked" ? "vertical" : "horizontal"}
                       splitRatio={sideBySideSplitRatio}
                       onSplitRatioChange={setSideBySideSplitRatio}
                       onSwapImages={
@@ -1210,7 +1212,7 @@ export function ImageEditor({
                         onDragEnter={handleSecondImageDragOver}
                         onDragOver={handleSecondImageDragOver}
                         onDragLeave={handleSecondImageDragLeave}
-                        aria-label="Upload image 2 for side-by-side comparison"
+                        aria-label="Upload image 2 for comparison"
                         style={{
                           display: 'flex',
                           flexDirection: 'column',

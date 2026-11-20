@@ -5,6 +5,9 @@ import {
   getContainFitRect,
   getMacbookFrameDimensions,
   getSideBySideFrameDimensions,
+  getStackedFrameDimensions,
+  getDualImageFrameDimensions,
+  isDualImageFrame,
   type FrameDimensions,
 } from "./frame-utils";
 
@@ -51,6 +54,33 @@ describe("frame-utils side-by-side sizing", () => {
 
     expect(dims.totalWidth).toBe(1920 + 1280);
     expect(dims.totalHeight).toBe(1080);
+  });
+});
+
+describe("frame-utils stacked sizing", () => {
+  it("sums heights and uses the maximum width", () => {
+    const dims = getStackedFrameDimensions(1920, 1080, 1280, 720);
+
+    expect(dims.totalWidth).toBe(1920);
+    expect(dims.totalHeight).toBe(1080 + 720);
+    expect(dims.screenX).toBe(0);
+    expect(dims.screenY).toBe(0);
+  });
+
+  it("dispatches by frame type", () => {
+    expect(getDualImageFrameDimensions("stacked", 800, 600, 800, 600)).toEqual(
+      getStackedFrameDimensions(800, 600, 800, 600)
+    );
+    expect(getDualImageFrameDimensions("side-by-side", 800, 600, 800, 600)).toEqual(
+      getSideBySideFrameDimensions(800, 600, 800, 600)
+    );
+  });
+
+  it("identifies two-image frame types", () => {
+    expect(isDualImageFrame("side-by-side")).toBe(true);
+    expect(isDualImageFrame("stacked")).toBe(true);
+    expect(isDualImageFrame("macbook")).toBe(false);
+    expect(isDualImageFrame("none")).toBe(false);
   });
 });
 
@@ -124,6 +154,35 @@ describe("drawSideBySideFrame layout", () => {
 
     expect(drawImage).toHaveBeenCalledTimes(2); // one image per photo
     expect(fill).toHaveBeenCalledTimes(2); // one shadow fill per photo
+  });
+
+  it("stacks Image 1 above Image 2 with a gap in vertical orientation", () => {
+    const { ctx, drawImage } = makeCtx();
+    const stackedDims: FrameDimensions = {
+      totalWidth: 1000,
+      totalHeight: 2000,
+      screenX: 0,
+      screenY: 0,
+      screenWidth: 1000,
+      screenHeight: 2000,
+    };
+    drawSideBySideFrame(ctx, 0, 0, stackedDims, img(1000, 1000), img(1000, 1000), {
+      splitRatio: 0.5,
+      orientation: "vertical",
+    });
+
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    const [, topX, topY, topW, topH] = drawImage.mock.calls[0];
+    const [, bottomX, bottomY, bottomW] = drawImage.mock.calls[1];
+    // Both photos are horizontally centred in the full-width column.
+    expect(topX + topW / 2).toBeCloseTo(stackedDims.totalWidth / 2);
+    expect(bottomX + bottomW / 2).toBeCloseTo(stackedDims.totalWidth / 2);
+    // Bottom photo starts strictly below the top photo (gap > 0).
+    expect(bottomY).toBeGreaterThan(topY + topH);
+    // Each photo fits inside its vertical slot.
+    const gap = Math.round(stackedDims.totalHeight * 0.04);
+    const slotHeight = Math.round((stackedDims.totalHeight - gap) * 0.5);
+    expect(topH).toBeLessThanOrEqual(slotHeight);
   });
 });
 
