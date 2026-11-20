@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import type { BackgroundFillSettings, EditorSettings } from "@/stores/editorStore";
 import { createHighQualityCanvas, calculateScaledImageDimensions } from "@/lib/canvas-utils";
 import { drawAnnotationOnCanvas } from "@/lib/annotation-utils";
-import { getFrameDimensions, drawFrame, drawSideBySideFrame, getSideBySideFrameDimensions } from "@/lib/frame-utils";
+import { getFrameDimensions, drawFrame, drawSideBySideFrame, getDualImageFrameDimensions, isDualImageFrame } from "@/lib/frame-utils";
 import { Annotation } from "@/types/annotations";
 
 // Image cache with LRU-like cleanup (max 20 images)
@@ -232,9 +232,9 @@ export function usePreviewGenerator({
     const canvas = canvasRef.current;
 
     // When a frame is active, compute frame dimensions for canvas sizing.
-    // Side-by-side only behaves like a frame once a second foreground image exists;
-    // otherwise the main photo renders normally over the shared background.
-    let frameDims = settingsToRender.frameType && settingsToRender.frameType !== "none" && settingsToRender.frameType !== "side-by-side"
+    // Two-image frames (side-by-side / stacked) only behave like a frame once a
+    // second foreground image exists; otherwise the main photo renders normally.
+    let frameDims = settingsToRender.frameType && settingsToRender.frameType !== "none" && !isDualImageFrame(settingsToRender.frameType)
       ? getFrameDimensions(settingsToRender.frameType, screenshotImage.width, screenshotImage.height)
       : null;
 
@@ -261,7 +261,7 @@ export function usePreviewGenerator({
       // This is independent from the shared canvas background.
       let secondImage: HTMLImageElement | null = null;
       if (
-        settingsToRender.frameType === "side-by-side" &&
+        isDualImageFrame(settingsToRender.frameType) &&
         settingsToRender.selectedImageSrc2 &&
         settingsToRender.selectedImageSrc2 !== bgSrc
       ) {
@@ -269,8 +269,9 @@ export function usePreviewGenerator({
       }
 
       // Override frameDims for side-by-side using actual second image dimensions
-      if (settingsToRender.frameType === "side-by-side" && secondImage) {
-        frameDims = getSideBySideFrameDimensions(
+      if (isDualImageFrame(settingsToRender.frameType) && secondImage) {
+        frameDims = getDualImageFrameDimensions(
+          settingsToRender.frameType,
           screenshotImage.width,
           screenshotImage.height,
           secondImage.width,
@@ -328,7 +329,7 @@ export function usePreviewGenerator({
         ctx.drawImage(tempCanvas, 0, 0);
 
         ctx.save();
-        const shouldApplyImageShadow = settingsToRender.frameType !== "side-by-side" || !secondImage;
+        const shouldApplyImageShadow = !isDualImageFrame(settingsToRender.frameType) || !secondImage;
         ctx.shadowColor = shouldApplyImageShadow ? `rgba(0, 0, 0, ${settingsToRender.shadow.opacity / 100})` : "transparent";
         ctx.shadowBlur = shouldApplyImageShadow ? settingsToRender.shadow.blur : 0;
         ctx.shadowOffsetX = shouldApplyImageShadow ? settingsToRender.shadow.offsetX : 0;
@@ -357,8 +358,8 @@ export function usePreviewGenerator({
             );
             applyNoise(macbookDisplayCanvas, settingsToRender.noiseAmount);
           }
-          if (settingsToRender.frameType === "side-by-side" && secondImage) {
-            // Side-by-side mode: draw both photos on the shared background.
+          if (isDualImageFrame(settingsToRender.frameType) && secondImage) {
+            // Two-image mode: draw both photos on the shared background.
             // Shadow is set inside drawSideBySideFrame (the ctx-level shadow is
             // disabled above for this mode so the whole composite isn't shadowed).
             drawSideBySideFrame(
@@ -372,6 +373,7 @@ export function usePreviewGenerator({
                 splitRatio,
                 borderRadius: settingsToRender.borderRadius,
                 shadow: settingsToRender.shadow,
+                orientation: settingsToRender.frameType === "stacked" ? "vertical" : "horizontal",
               }
             );
           } else {
@@ -544,7 +546,7 @@ export function usePreviewGenerator({
         // This is independent from the shared canvas background.
         let secondImage: HTMLImageElement | null = null;
         if (
-          settings.frameType === "side-by-side" &&
+          isDualImageFrame(settings.frameType) &&
           settings.selectedImageSrc2 &&
           settings.selectedImageSrc2 !== bgSrc
         ) {

@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { MoveLeft, RefreshCw } from "lucide-react";
+import { MoveLeft, MoveUp, RefreshCw } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 interface SideBySidePanelProps {
@@ -12,20 +12,27 @@ interface SideBySidePanelProps {
   onSwapImages?: () => void;
   leftImageLabel?: string;
   rightImageLabel?: string;
+  /** "horizontal" = side-by-side (default), "vertical" = stacked top/bottom. */
+  orientation?: "horizontal" | "vertical";
 }
 
 export const SideBySidePanel = memo(function SideBySidePanel({
   splitRatio,
   onSplitRatioChange,
   onSwapImages,
-  leftImageLabel = "Left",
-  rightImageLabel = "Right",
+  leftImageLabel,
+  rightImageLabel,
+  orientation = "horizontal",
 }: SideBySidePanelProps) {
+  const isVertical = orientation === "vertical";
+  const firstLabel = leftImageLabel ?? (isVertical ? "Top" : "Left");
+  const secondLabel = rightImageLabel ?? (isVertical ? "Bottom" : "Right");
+  const HintIcon = isVertical ? MoveUp : MoveLeft;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Section header */}
       <div className="section-header" style={{ paddingTop: 0 }}>
-        <span className="section-title">Side-by-side</span>
+        <span className="section-title">{isVertical ? "Stacked" : "Side-by-side"}</span>
       </div>
 
       {/* Swap button — only shown when both images are present */}
@@ -34,7 +41,7 @@ export const SideBySidePanel = memo(function SideBySidePanel({
           <span className="toggle-label">Swap images</span>
           <button
             onClick={onSwapImages}
-            aria-label="Swap left and right images"
+            aria-label={isVertical ? "Swap top and bottom images" : "Swap left and right images"}
             className="tool-btn"
             style={{ minWidth: 44, minHeight: 44 }}
           >
@@ -66,8 +73,8 @@ export const SideBySidePanel = memo(function SideBySidePanel({
           color: "oklch(0.65 0.01 250)",
           marginTop: 4,
         }}>
-          <span>{leftImageLabel}</span>
-          <span>{rightImageLabel}</span>
+          <span>{firstLabel}</span>
+          <span>{secondLabel}</span>
         </div>
       </div>
 
@@ -84,7 +91,7 @@ export const SideBySidePanel = memo(function SideBySidePanel({
         alignItems: "flex-start",
         gap: 6,
       }}>
-        <MoveLeft className="size-3 mt-0.5 flex-shrink-0" style={{ color: "oklch(0.42 0.012 250)" }} />
+        <HintIcon className="size-3 mt-0.5 flex-shrink-0" style={{ color: "oklch(0.42 0.012 250)" }} />
         <span>
           Adjust the split ratio to control how much space each image takes.
         </span>

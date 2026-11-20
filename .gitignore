@@ -39,3 +39,9 @@ scripts/
 
 # README rewrite backup (kept local)
 README.backup.md
+
+# Local tooling output
+coverage/
+.gitissue/
+.pi/
+.research/
