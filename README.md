@@ -31,7 +31,7 @@ Capture, polish, and ship a screenshot in under a minute. Native macOS, fully lo
 | **Blur + noise textures** | Subtle film-grain backgrounds without leaving the app |
 | **Annotations** | Arrows, circles, rectangles, lines, text, numbered callouts |
 | **Device frames** | Wrap captures in iPhone or MacBook frames |
-| **Side-by-side comparison** | Place two photos in one frame with an adjustable split and swap |
+| **Side-by-side + stacked comparison** | Place two photos in one frame, left-right or top-bottom, with an adjustable split and swap |
 | **Upload to edit** | Drop any PNG or JPG in and apply the same toolkit |
 | **Undo / redo history** | Nothing is permanent until you save or copy |
 | **100% local** | No network calls, no telemetry, no account, no upload |

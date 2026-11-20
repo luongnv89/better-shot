@@ -5,7 +5,32 @@ All notable changes to Better Shot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-07-XX
+## [0.7.0] - 2026-11-20
+
+### Added
+
+- **Stacked layout for two-image comparison**: A new "Stacked" frame type places Image 1 above Image 2 on a shared background, next to the existing "Side by side" layout. The split-ratio slider and gap apply along the height, and the live preview and full-quality export both support it. Image 2 auto-fill from recent captures, upload, swap, and the capture-history picker all work in Stacked, and switching between Side by side and Stacked keeps Image 2 in place (#61)
+
+### Changed
+
+- **Frame selector grid**: With six frame options, the frame selector now shows two rows of three (#61)
+- **Upload button label**: The Image 2 upload button's accessible label is now "Upload image 2 for comparison", since it serves both two-image layouts (#61)
+
+### Fixed
+
+- **Release build configuration**: Aligned the `@tauri-apps/api` npm package (^2.11.1 → ^2.9.1) with the Tauri crates, synced the `tauri.conf.json` version with `package.json`, updated the macOS signing identity, and moved the release workflow from Node.js 20 to 22
+
+### Chores
+
+- **CI runner**: The CI workflow now runs on `ubuntu-latest` instead of `macos-latest` (#61)
+- **Modernization docs**: Added `MODERNIZATION_PLAN.md` and `MODERNIZATION_REPORT.md` (#61)
+- **Ignore local tool output**: Added `coverage/`, `.gitissue/`, `.pi/`, and `.research/` to .gitignore (#61)
+
+### Tests
+
+- **Stacked layout tests**: Added tests for stacked frame sizing, vertical drawing, and the panel's vertical wording (#61)
+
+## [0.6.0] - 2026-09-03
 
 ### Added
 
